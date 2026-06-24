@@ -65,6 +65,8 @@ dependencies {
     
     // Tuya / Thing Smart
     implementation(libs.thing.home.sdk)
+    implementation(libs.fastjson)
+    implementation(libs.okhttp.urlconnection)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
