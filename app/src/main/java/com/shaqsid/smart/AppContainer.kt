@@ -1,12 +1,13 @@
 package com.shaqsid.smart
 
+import android.content.Context
 import com.shaqsid.smart.data.repository.DeviceRepositoryImpl
 import com.shaqsid.smart.domain.repository.DeviceRepository
 import com.shaqsid.smart.domain.usecase.*
 
-class AppContainer {
+class AppContainer(private val context: Context) {
     val deviceRepository: DeviceRepository by lazy {
-        DeviceRepositoryImpl()
+        DeviceRepositoryImpl(context)
     }
 
     val deviceUseCases: DeviceUseCases by lazy {
@@ -15,7 +16,8 @@ class AppContainer {
             getDevice = GetDeviceUseCase(deviceRepository),
             addDevice = AddDeviceUseCase(deviceRepository),
             updateDeviceStatus = UpdateDeviceStatusUseCase(deviceRepository),
-            removeDevice = RemoveDeviceUseCase(deviceRepository)
+            removeDevice = RemoveDeviceUseCase(deviceRepository),
+            renameDevice = RenameDeviceUseCase(deviceRepository)
         )
     }
 }

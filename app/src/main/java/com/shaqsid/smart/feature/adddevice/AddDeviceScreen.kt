@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,7 +23,7 @@ fun AddDeviceScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add New Device") },
+                title = { Text("Add New Device (EZ Mode)") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -44,9 +45,18 @@ fun AddDeviceScreen(
             verticalArrangement = Arrangement.Top
         ) {
             OutlinedTextField(
-                value = uiState.deviceName,
-                onValueChange = { viewModel.updateDeviceName(it) },
-                label = { Text("Device Name") },
+                value = uiState.ssid,
+                onValueChange = { viewModel.updateSsid(it) },
+                label = { Text("Wi-Fi SSID") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = uiState.password,
+                onValueChange = { viewModel.updatePassword(it) },
+                label = { Text("Wi-Fi Password") },
+                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -54,7 +64,7 @@ fun AddDeviceScreen(
             Button(
                 onClick = { viewModel.addDevice(onSuccess = onNavigateBack) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = uiState.deviceName.isNotBlank() && !uiState.isLoading
+                enabled = uiState.ssid.isNotBlank() && !uiState.isLoading
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
@@ -62,7 +72,7 @@ fun AddDeviceScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Add Device")
+                    Text("Start Pairing")
                 }
             }
             if (uiState.error != null) {

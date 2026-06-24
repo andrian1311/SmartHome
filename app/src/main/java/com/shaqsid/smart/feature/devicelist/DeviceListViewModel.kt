@@ -31,4 +31,10 @@ class DeviceListViewModel(
             deviceUseCases.removeDevice(id)
         }
     }
+
+    fun renameDevice(id: String, newName: String) {
+        viewModelScope.launch {
+            deviceUseCases.renameDevice(id, newName)
+        }
+    }
 }

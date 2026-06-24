@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class AddDeviceViewModel(
     private val deviceUseCases: DeviceUseCases
@@ -16,31 +15,35 @@ class AddDeviceViewModel(
     private val _uiState = MutableStateFlow(AddDeviceUiState())
     val uiState: StateFlow<AddDeviceUiState> = _uiState.asStateFlow()
 
-    fun updateDeviceName(name: String) {
-        _uiState.value = _uiState.value.copy(deviceName = name)
+    fun updateSsid(ssid: String) {
+        _uiState.value = _uiState.value.copy(ssid = ssid)
+    }
+
+    fun updatePassword(password: String) {
+        _uiState.value = _uiState.value.copy(password = password)
     }
 
     fun addDevice(onSuccess: () -> Unit) {
-        val currentName = _uiState.value.deviceName
-        if (currentName.isBlank()) return
+        val currentSsid = _uiState.value.ssid
+        val currentPassword = _uiState.value.password
+        if (currentSsid.isBlank()) return
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            // Generate a random ID for the mock
-            val newId = UUID.randomUUID().toString()
-            val result = deviceUseCases.addDevice(currentName, newId)
+            val result = deviceUseCases.addDevice(currentSsid, currentPassword)
             _uiState.value = _uiState.value.copy(isLoading = false)
             if (result.isSuccess) {
                 onSuccess()
             } else {
-                _uiState.value = _uiState.value.copy(error = "Failed to add device")
+                _uiState.value = _uiState.value.copy(error = result.exceptionOrNull()?.message ?: "Failed to add device")
             }
         }
     }
 }
 
 data class AddDeviceUiState(
-    val deviceName: String = "",
+    val ssid: String = "",
+    val password: String = "",
     val isLoading: Boolean = false,
     val error: String? = null
 )

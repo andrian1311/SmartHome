@@ -1,16 +1,14 @@
 package com.shaqsid.smart.feature.devicelist
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -24,6 +22,35 @@ fun DeviceListScreen(
     onAddDeviceClick: () -> Unit
 ) {
     val devices by viewModel.devices.collectAsState()
+    var deviceToRename by remember { mutableStateOf<SmartDevice?>(null) }
+    var newDeviceName by remember { mutableStateOf("") }
+
+    if (deviceToRename != null) {
+        AlertDialog(
+            onDismissRequest = { deviceToRename = null },
+            title = { Text("Rename Device") },
+            text = {
+                OutlinedTextField(
+                    value = newDeviceName,
+                    onValueChange = { newDeviceName = it },
+                    label = { Text("New Name") }
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    deviceToRename?.let { viewModel.renameDevice(it.id, newDeviceName) }
+                    deviceToRename = null
+                }) {
+                    Text("Rename")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deviceToRename = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -57,6 +84,10 @@ fun DeviceListScreen(
                     DeviceItem(
                         device = device,
                         onToggle = { viewModel.toggleDeviceState(device) },
+                        onRename = { 
+                            deviceToRename = device
+                            newDeviceName = device.name
+                        },
                         onDelete = { viewModel.removeDevice(device.id) }
                     )
                 }
@@ -69,6 +100,7 @@ fun DeviceListScreen(
 fun DeviceItem(
     device: SmartDevice,
     onToggle: () -> Unit,
+    onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -102,6 +134,9 @@ fun DeviceItem(
                 onCheckedChange = { onToggle() },
                 enabled = device.isOnline
             )
+            IconButton(onClick = onRename) {
+                Icon(Icons.Default.Edit, contentDescription = "Rename Device")
+            }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete Device", tint = MaterialTheme.colorScheme.error)
             }

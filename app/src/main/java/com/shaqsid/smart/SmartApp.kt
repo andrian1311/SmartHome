@@ -8,7 +8,7 @@ class SmartApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer()
+        container = AppContainer(this)
 
         // Initialize Tuya / Thing Smart SDK
         // You will add your appKey and appSecret later via ThingHomeSdk.init(this, "appKey", "appSecret")

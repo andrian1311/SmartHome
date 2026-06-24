@@ -17,14 +17,20 @@ class GetDeviceUseCase(private val repository: DeviceRepository) {
 }
 
 class AddDeviceUseCase(private val repository: DeviceRepository) {
-    suspend operator fun invoke(name: String, id: String): Result<Unit> {
-        return repository.addDevice(name, id)
+    suspend operator fun invoke(ssid: String, password: String): Result<Unit> {
+        return repository.addDevice(ssid, password)
     }
 }
 
 class UpdateDeviceStatusUseCase(private val repository: DeviceRepository) {
     suspend operator fun invoke(id: String, isOn: Boolean): Result<Unit> {
         return repository.updateDeviceStatus(id, isOn)
+    }
+}
+
+class RenameDeviceUseCase(private val repository: DeviceRepository) {
+    suspend operator fun invoke(id: String, newName: String): Result<Unit> {
+        return repository.renameDevice(id, newName)
     }
 }
 
@@ -39,5 +45,6 @@ data class DeviceUseCases(
     val getDevice: GetDeviceUseCase,
     val addDevice: AddDeviceUseCase,
     val updateDeviceStatus: UpdateDeviceStatusUseCase,
-    val removeDevice: RemoveDeviceUseCase
+    val removeDevice: RemoveDeviceUseCase,
+    val renameDevice: RenameDeviceUseCase
 )
