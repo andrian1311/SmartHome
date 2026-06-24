@@ -77,6 +77,10 @@ dependencies {
     implementation(libs.thing.home.sdk)
     implementation(libs.fastjson)
     implementation(libs.okhttp.urlconnection)
+    // App-specific "security algorithm" component (security-algorithm.aar), downloaded from the
+    // Tuya IoT Platform for this appKey + package + SHA-256. Provides libthing_security_algorithm.so
+    // which libthing_security.so depends on. Drop the .aar into app/libs/.
+    implementation(fileTree("libs") { include("*.jar", "*.aar") })
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
