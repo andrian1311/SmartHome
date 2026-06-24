@@ -43,6 +43,12 @@ class UpdateDeviceStatusUseCase(private val repository: DeviceRepository) {
     }
 }
 
+class PublishDpUseCase(private val repository: DeviceRepository) {
+    suspend operator fun invoke(deviceId: String, dpId: String, value: Any): Result<Unit> {
+        return repository.publishDp(deviceId, dpId, value)
+    }
+}
+
 class RenameDeviceUseCase(private val repository: DeviceRepository) {
     suspend operator fun invoke(id: String, newName: String): Result<Unit> {
         return repository.renameDevice(id, newName)
@@ -63,6 +69,7 @@ data class DeviceUseCases(
     val addDevice: AddDeviceUseCase,
     val addDeviceByQrCode: AddDeviceByQrCodeUseCase,
     val updateDeviceStatus: UpdateDeviceStatusUseCase,
+    val publishDp: PublishDpUseCase,
     val removeDevice: RemoveDeviceUseCase,
     val renameDevice: RenameDeviceUseCase
 )

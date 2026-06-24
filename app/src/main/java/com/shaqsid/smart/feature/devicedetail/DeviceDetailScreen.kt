@@ -1,6 +1,8 @@
 package com.shaqsid.smart.feature.devicedetail
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -11,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.shaqsid.smart.domain.model.DeviceControl
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,8 +125,8 @@ fun DeviceDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
             Text(
                 text = current.name,
@@ -137,40 +140,33 @@ fun DeviceDetailScreen(
                 else MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium
             )
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Power", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            text = if (current.isOn) "On" else "Off",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    Switch(
-                        checked = current.isOn,
-                        onCheckedChange = { viewModel.toggle(it) },
-                        enabled = current.isOnline
-                    )
-                }
-            }
-
             if (!current.isOnline) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Controls are disabled while the device is offline.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
             }
+            Spacer(modifier = Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
+            if (current.controls.isEmpty()) {
+                Text(
+                    text = "No controllable functions reported for this device.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                current.controls.forEach { control ->
+                    ControlCard(
+                        control = control,
+                        enabled = current.isOnline && control.editable,
+                        onValueChange = { value -> viewModel.setControl(control.dpId, value) }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Device ID: ${current.id}",
                 style = MaterialTheme.typography.bodySmall,
@@ -179,3 +175,95 @@ fun DeviceDetailScreen(
         }
     }
 }
+
+@Composable
+private fun ControlCard(
+    control: DeviceControl,
+    enabled: Boolean,
+    onValueChange: (Any) -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            when (control) {
+                is DeviceControl.Switch -> Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(control.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    Switch(
+                        checked = control.on,
+                        onCheckedChange = { onValueChange(it) },
+                        enabled = enabled
+                    )
+                }
+
+                is DeviceControl.Numeric -> NumericControl(control, enabled, onValueChange)
+
+                is DeviceControl.Enumeration -> EnumerationControl(control, enabled, onValueChange)
+
+                is DeviceControl.Text -> {
+                    Text(control.name, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = control.current.ifBlank { "—" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NumericControl(
+    control: DeviceControl.Numeric,
+    enabled: Boolean,
+    onValueChange: (Any) -> Unit
+) {
+    // Local slider position for smooth dragging; published only when the drag finishes.
+    var sliderValue by remember(control.current) { mutableFloatStateOf(control.current.toFloat()) }
+    val divisor = Math.pow(10.0, control.scale.toDouble())
+    val display = sliderValue / divisor
+    val steps = if (control.step > 0) ((control.max - control.min) / control.step - 1).coerceAtLeast(0) else 0
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(control.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = formatNumber(display) + control.unit,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+    Slider(
+        value = sliderValue.coerceIn(control.min.toFloat(), control.max.toFloat()),
+        onValueChange = { sliderValue = it },
+        onValueChangeFinished = { onValueChange(sliderValue.toInt()) },
+        valueRange = control.min.toFloat()..control.max.toFloat(),
+        steps = steps,
+        enabled = enabled
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun EnumerationControl(
+    control: DeviceControl.Enumeration,
+    enabled: Boolean,
+    onValueChange: (Any) -> Unit
+) {
+    Text(control.name, style = MaterialTheme.typography.titleMedium)
+    Spacer(modifier = Modifier.height(8.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        control.options.forEach { option ->
+            FilterChip(
+                selected = control.current == option,
+                onClick = { onValueChange(option) },
+                label = { Text(option) },
+                enabled = enabled
+            )
+        }
+    }
+}
+
+private fun formatNumber(value: Double): String =
+    if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()

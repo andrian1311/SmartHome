@@ -19,6 +19,9 @@ interface DeviceRepository {
     /** Pairs a device from a scanned QR code's content. */
     suspend fun addDeviceByQrCode(qrContent: String): Result<Unit>
     suspend fun updateDeviceStatus(id: String, isOn: Boolean): Result<Unit>
+
+    /** Writes an arbitrary data point (DP) value; [value] must be a Boolean, Int, or String. */
+    suspend fun publishDp(deviceId: String, dpId: String, value: Any): Result<Unit>
     suspend fun renameDevice(id: String, newName: String): Result<Unit>
     suspend fun removeDevice(id: String): Result<Unit>
 }

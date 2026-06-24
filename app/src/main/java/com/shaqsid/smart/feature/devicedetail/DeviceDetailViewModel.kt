@@ -27,10 +27,11 @@ class DeviceDetailViewModel(
     private val _messages = MutableSharedFlow<String>()
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
-    fun toggle(isOn: Boolean) {
+    /** Writes a data point value (Boolean / Int / String) for any control on this device. */
+    fun setControl(dpId: String, value: Any) {
         viewModelScope.launch {
-            deviceUseCases.updateDeviceStatus(deviceId, isOn)
-                .onFailure { emitMessage(it.message ?: "Failed to control device") }
+            deviceUseCases.publishDp(deviceId, dpId, value)
+                .onFailure { emitMessage(it.message ?: "Failed to send command") }
         }
     }
 

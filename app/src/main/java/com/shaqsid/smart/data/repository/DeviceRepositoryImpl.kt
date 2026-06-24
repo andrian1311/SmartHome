@@ -2,6 +2,7 @@ package com.shaqsid.smart.data.repository
 
 import android.content.Context
 import android.util.Log
+import com.shaqsid.smart.domain.model.DeviceControl
 import com.shaqsid.smart.domain.model.PairingMode
 import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.json.JSONObject
 import kotlin.coroutines.resume
 
 class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
@@ -131,10 +133,65 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                 id = deviceBean.devId,
                 name = deviceBean.name ?: "Unknown Device",
                 isOnline = deviceBean.isOnline,
-                isOn = isOn
+                isOn = isOn,
+                controls = parseControls(deviceBean)
             )
         } ?: emptyList()
         devicesFlow.value = smartDevices
+    }
+
+    /**
+     * Maps a device's Tuya schema + current DP values into typed [DeviceControl]s the UI can render.
+     * Unsupported/complex types (raw, bitmap, struct) are skipped.
+     */
+    private fun parseControls(deviceBean: DeviceBean): List<DeviceControl> {
+        val schemaMap = deviceBean.schemaMap ?: return emptyList()
+        val dps = deviceBean.dps ?: emptyMap()
+
+        return schemaMap.values
+            .sortedBy { it.id.toIntOrNull() ?: Int.MAX_VALUE }
+            .mapNotNull { schema ->
+                val dpId = schema.id ?: return@mapNotNull null
+                val name = schema.name?.takeIf { it.isNotBlank() } ?: "DP $dpId"
+                val editable = schema.mode?.contains("w") ?: false
+                val value = dps[dpId]
+
+                val property = runCatching { JSONObject(schema.property ?: "{}") }.getOrNull() ?: JSONObject()
+                val type = property.optString("type").ifBlank { schema.type ?: "" }
+
+                when (type) {
+                    "bool" -> DeviceControl.Switch(
+                        dpId, name, editable, on = value as? Boolean ?: false
+                    )
+
+                    "value" -> DeviceControl.Numeric(
+                        dpId, name, editable,
+                        current = (value as? Number)?.toInt() ?: property.optInt("min"),
+                        min = property.optInt("min", 0),
+                        max = property.optInt("max", 100),
+                        step = property.optInt("step", 1).coerceAtLeast(1),
+                        scale = property.optInt("scale", 0),
+                        unit = property.optString("unit")
+                    )
+
+                    "enum" -> {
+                        val options = property.optJSONArray("range")?.let { arr ->
+                            (0 until arr.length()).map { arr.optString(it) }
+                        } ?: emptyList()
+                        DeviceControl.Enumeration(
+                            dpId, name, editable,
+                            current = value?.toString() ?: options.firstOrNull().orEmpty(),
+                            options = options
+                        )
+                    }
+
+                    "string" -> DeviceControl.Text(
+                        dpId, name, editable, current = value?.toString().orEmpty()
+                    )
+
+                    else -> null
+                }
+            }
     }
 
     override fun getDevices(): Flow<List<SmartDevice>> = devicesFlow
@@ -257,6 +314,30 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                 override fun onError(code: String?, error: String?) {
                     if (continuation.isActive) {
                         continuation.resume(Result.failure(Exception("Failed to update status: $error")))
+                    }
+                }
+
+                override fun onSuccess() {
+                    if (continuation.isActive) {
+                        continuation.resume(Result.success(Unit))
+                    }
+                }
+            })
+        }
+
+    override suspend fun publishDp(deviceId: String, dpId: String, value: Any): Result<Unit> =
+        suspendCancellableCoroutine { continuation ->
+            val mDevice = ThingHomeSdk.newDeviceInstance(deviceId)
+            if (mDevice == null) {
+                continuation.resume(Result.failure(Exception("Device not found")))
+                return@suspendCancellableCoroutine
+            }
+            // JSONObject encodes the value with the right JSON type (bool/number/string).
+            val command = JSONObject().put(dpId, value).toString()
+            mDevice.publishDps(command, object : IResultCallback {
+                override fun onError(code: String?, error: String?) {
+                    if (continuation.isActive) {
+                        continuation.resume(Result.failure(Exception("Failed to send command: $error")))
                     }
                 }
 
