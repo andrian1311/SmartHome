@@ -19,6 +19,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // The Tuya/Thing SDK only ships native libraries (incl. libthing_security.so)
+        // for ARM. Limit ABIs so we never package a broken x86/x86_64 variant.
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
     }
 
     buildTypes {
@@ -39,6 +45,10 @@ android {
         }
         jniLibs {
             pickFirsts += "lib/*/libc++_shared.so"
+            // The Tuya security component loads its .so from disk, so the native libs
+            // must be extracted on install (extractNativeLibs=true) rather than kept
+            // compressed inside the APK. Otherwise SecureNativeApi fails to link.
+            useLegacyPackaging = true
         }
     }
     compileOptions {
