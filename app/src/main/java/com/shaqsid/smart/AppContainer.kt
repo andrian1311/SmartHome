@@ -34,6 +34,7 @@ class AppContainer(private val context: Context) {
             getDevices = GetDevicesUseCase(deviceRepository),
             getDevice = GetDeviceUseCase(deviceRepository),
             addDevice = AddDeviceUseCase(deviceRepository),
+            addDeviceByQrCode = AddDeviceByQrCodeUseCase(deviceRepository),
             updateDeviceStatus = UpdateDeviceStatusUseCase(deviceRepository),
             removeDevice = RemoveDeviceUseCase(deviceRepository),
             renameDevice = RenameDeviceUseCase(deviceRepository)

@@ -2,6 +2,7 @@ package com.shaqsid.smart.data.repository
 
 import android.content.Context
 import android.util.Log
+import com.shaqsid.smart.domain.model.PairingMode
 import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
 import com.thingclips.smart.home.sdk.ThingHomeSdk
@@ -14,6 +15,7 @@ import com.thingclips.smart.sdk.api.IThingActivatorGetToken
 import com.thingclips.smart.sdk.bean.DeviceBean
 import com.thingclips.smart.sdk.enums.ActivatorModelEnum
 import com.thingclips.smart.home.sdk.builder.ActivatorBuilder
+import com.thingclips.smart.home.sdk.builder.ThingQRCodeActivatorBuilder
 import com.thingclips.smart.home.sdk.api.IThingHomeStatusListener
 import com.thingclips.smart.sdk.bean.GroupBean
 import kotlinx.coroutines.flow.Flow
@@ -140,11 +142,16 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
     override fun getDevice(id: String): Flow<SmartDevice?> =
         devicesFlow.map { devices -> devices.find { it.id == id } }
 
-    override suspend fun addDevice(ssid: String, password: String): Result<Unit> =
+    override suspend fun addDevice(ssid: String, password: String, mode: PairingMode): Result<Unit> =
         suspendCancellableCoroutine { continuation ->
             if (currentHomeId == 0L) {
                 continuation.resume(Result.failure(Exception("Home not initialized. Please wait and try again.")))
                 return@suspendCancellableCoroutine
+            }
+
+            val activatorModel = when (mode) {
+                PairingMode.AP -> ActivatorModelEnum.THING_AP
+                else -> ActivatorModelEnum.THING_EZ
             }
 
             ThingHomeSdk.getActivatorInstance().getActivatorToken(
@@ -155,7 +162,7 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                             .setContext(context)
                             .setSsid(ssid)
                             .setPassword(password)
-                            .setActivatorModel(ActivatorModelEnum.THING_EZ)
+                            .setActivatorModel(activatorModel)
                             .setTimeOut(100)
                             .setToken(token)
                             .setListener(object : IThingSmartActivatorListener {
@@ -196,6 +203,45 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                     }
                 }
             )
+        }
+
+    override suspend fun addDeviceByQrCode(qrContent: String): Result<Unit> =
+        suspendCancellableCoroutine { continuation ->
+            if (currentHomeId == 0L) {
+                continuation.resume(Result.failure(Exception("Home not initialized. Please wait and try again.")))
+                return@suspendCancellableCoroutine
+            }
+
+            val builder = ThingQRCodeActivatorBuilder()
+                .setContext(context)
+                .setHomeId(currentHomeId)
+                .setUuid(qrContent)
+                .setTimeOut(100)
+                .setListener(object : IThingSmartActivatorListener {
+                    override fun onError(errorCode: String?, errorMsg: String?) {
+                        if (continuation.isActive) {
+                            continuation.resume(Result.failure(Exception("QR pairing failed: $errorMsg")))
+                        }
+                    }
+
+                    override fun onActiveSuccess(devResp: DeviceBean?) {
+                        if (continuation.isActive) {
+                            continuation.resume(Result.success(Unit))
+                        }
+                        refreshDevices()
+                    }
+
+                    override fun onStep(step: String?, data: Any?) {
+                        Log.d(TAG, "QR pairing step: $step")
+                    }
+                })
+
+            val activator = ThingHomeSdk.getActivatorInstance().newQRCodeDevActivator(builder)
+            activator?.start()
+
+            continuation.invokeOnCancellation {
+                activator?.stop()
+            }
         }
 
     override suspend fun updateDeviceStatus(id: String, isOn: Boolean): Result<Unit> =

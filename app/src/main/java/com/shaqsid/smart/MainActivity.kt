@@ -20,9 +20,13 @@ import com.shaqsid.smart.feature.auth.LoginScreen
 import com.shaqsid.smart.feature.auth.LoginViewModel
 import com.shaqsid.smart.feature.auth.RegisterScreen
 import com.shaqsid.smart.feature.auth.RegisterViewModel
+import com.shaqsid.smart.feature.devicedetail.DeviceDetailScreen
+import com.shaqsid.smart.feature.devicedetail.DeviceDetailViewModel
 import com.shaqsid.smart.feature.devicelist.DeviceListScreen
 import com.shaqsid.smart.feature.devicelist.DeviceListViewModel
 import com.shaqsid.smart.ui.theme.SmartDeviceTheme
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,11 +100,29 @@ fun SmartAppNavigation(appContainer: AppContainer) {
             DeviceListScreen(
                 viewModel = viewModel,
                 onAddDeviceClick = { navController.navigate("add_device") },
+                onDeviceClick = { deviceId -> navController.navigate("device_detail/$deviceId") },
                 onLoggedOut = {
                     navController.navigate("login") {
                         popUpTo("device_list") { inclusive = true }
                     }
                 }
+            )
+        }
+        composable(
+            route = "device_detail/{deviceId}",
+            arguments = listOf(navArgument("deviceId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val deviceId = backStackEntry.arguments?.getString("deviceId") ?: ""
+            val viewModel: DeviceDetailViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return DeviceDetailViewModel(appContainer.deviceUseCases, deviceId) as T
+                    }
+                }
+            )
+            DeviceDetailScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable("add_device") {

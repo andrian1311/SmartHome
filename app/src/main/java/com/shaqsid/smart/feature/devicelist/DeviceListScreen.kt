@@ -21,6 +21,7 @@ import com.shaqsid.smart.domain.model.SmartDevice
 fun DeviceListScreen(
     viewModel: DeviceListViewModel,
     onAddDeviceClick: () -> Unit,
+    onDeviceClick: (String) -> Unit,
     onLoggedOut: () -> Unit
 ) {
     val devices by viewModel.devices.collectAsState()
@@ -127,8 +128,9 @@ fun DeviceListScreen(
                 items(devices, key = { it.id }) { device ->
                     DeviceItem(
                         device = device,
+                        onClick = { onDeviceClick(device.id) },
                         onToggle = { viewModel.toggleDeviceState(device) },
-                        onRename = { 
+                        onRename = {
                             deviceToRename = device
                             newDeviceName = device.name
                         },
@@ -143,11 +145,13 @@ fun DeviceListScreen(
 @Composable
 fun DeviceItem(
     device: SmartDevice,
+    onClick: () -> Unit,
     onToggle: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(

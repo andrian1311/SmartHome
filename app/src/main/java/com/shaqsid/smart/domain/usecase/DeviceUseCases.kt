@@ -1,5 +1,6 @@
 package com.shaqsid.smart.domain.usecase
 
+import com.shaqsid.smart.domain.model.PairingMode
 import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
 import kotlinx.coroutines.flow.Flow
@@ -25,8 +26,14 @@ class GetDeviceUseCase(private val repository: DeviceRepository) {
 }
 
 class AddDeviceUseCase(private val repository: DeviceRepository) {
-    suspend operator fun invoke(ssid: String, password: String): Result<Unit> {
-        return repository.addDevice(ssid, password)
+    suspend operator fun invoke(ssid: String, password: String, mode: PairingMode): Result<Unit> {
+        return repository.addDevice(ssid, password, mode)
+    }
+}
+
+class AddDeviceByQrCodeUseCase(private val repository: DeviceRepository) {
+    suspend operator fun invoke(qrContent: String): Result<Unit> {
+        return repository.addDeviceByQrCode(qrContent)
     }
 }
 
@@ -54,6 +61,7 @@ data class DeviceUseCases(
     val getDevices: GetDevicesUseCase,
     val getDevice: GetDeviceUseCase,
     val addDevice: AddDeviceUseCase,
+    val addDeviceByQrCode: AddDeviceByQrCodeUseCase,
     val updateDeviceStatus: UpdateDeviceStatusUseCase,
     val removeDevice: RemoveDeviceUseCase,
     val renameDevice: RenameDeviceUseCase

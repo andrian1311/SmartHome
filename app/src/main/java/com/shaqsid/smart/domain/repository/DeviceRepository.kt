@@ -1,5 +1,6 @@
 package com.shaqsid.smart.domain.repository
 
+import com.shaqsid.smart.domain.model.PairingMode
 import com.shaqsid.smart.domain.model.SmartDevice
 import kotlinx.coroutines.flow.Flow
 
@@ -12,7 +13,11 @@ interface DeviceRepository {
 
     fun getDevices(): Flow<List<SmartDevice>>
     fun getDevice(id: String): Flow<SmartDevice?>
-    suspend fun addDevice(ssid: String, password: String): Result<Unit>
+    /** Pairs a Wi-Fi device using EZ (SmartConfig) or AP (hotspot) mode. */
+    suspend fun addDevice(ssid: String, password: String, mode: PairingMode): Result<Unit>
+
+    /** Pairs a device from a scanned QR code's content. */
+    suspend fun addDeviceByQrCode(qrContent: String): Result<Unit>
     suspend fun updateDeviceStatus(id: String, isOn: Boolean): Result<Unit>
     suspend fun renameDevice(id: String, newName: String): Result<Unit>
     suspend fun removeDevice(id: String): Result<Unit>
