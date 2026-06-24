@@ -14,7 +14,7 @@ class SmartApp : Application() {
         // You will add your appKey and appSecret later via ThingHomeSdk.init(this, "appKey", "appSecret")
         // For now, we just initialize the basic SDK without credentials to prevent crashes or let the user handle it later.
         try {
-            ThingHomeSdk.init(this, "PLACEHOLDER_APP_KEY", "PLACEHOLDER_SECRET_KEY")
+            ThingHomeSdk.init(this, "***REMOVED***", "***REMOVED***")
             // Optionally enable debug mode:
             // ThingHomeSdk.setDebugMode(true)
         } catch (e: Exception) {
