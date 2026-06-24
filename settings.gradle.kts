@@ -18,6 +18,7 @@ dependencyResolutionManagement {
         mavenCentral()
         maven { url = uri("https://maven-other.tuya.com/repository/maven-releases/") }
         maven { url = uri("https://maven-other.tuya.com/repository/maven-commercial-releases/") }
+        maven { url = uri("https://maven-other.tuya.com/repository/maven-snapshots/") }
     }
 }
 

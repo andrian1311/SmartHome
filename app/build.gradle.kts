@@ -5,6 +5,9 @@ plugins {
 }
 
 android {
+    configurations.all {
+        exclude(group = "com.thingclips.smart", module = "thingsmart-modularCampAnno")
+    }
     namespace = "com.shaqsid.smart"
     compileSdk = 36
 
@@ -33,6 +36,9 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            pickFirsts += "lib/*/libc++_shared.so"
         }
     }
     compileOptions {

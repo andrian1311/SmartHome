@@ -15,12 +15,19 @@ class AddDeviceViewModel(
     private val _uiState = MutableStateFlow(AddDeviceUiState())
     val uiState: StateFlow<AddDeviceUiState> = _uiState.asStateFlow()
 
+    /** Pre-fills the SSID from the connected Wi-Fi without overwriting anything the user typed. */
+    fun prefillSsid(ssid: String) {
+        if (ssid.isNotBlank() && _uiState.value.ssid.isBlank()) {
+            _uiState.value = _uiState.value.copy(ssid = ssid)
+        }
+    }
+
     fun updateSsid(ssid: String) {
-        _uiState.value = _uiState.value.copy(ssid = ssid)
+        _uiState.value = _uiState.value.copy(ssid = ssid, error = null)
     }
 
     fun updatePassword(password: String) {
-        _uiState.value = _uiState.value.copy(password = password)
+        _uiState.value = _uiState.value.copy(password = password, error = null)
     }
 
     fun addDevice(onSuccess: () -> Unit) {
@@ -29,7 +36,7 @@ class AddDeviceViewModel(
         if (currentSsid.isBlank()) return
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val result = deviceUseCases.addDevice(currentSsid, currentPassword)
             _uiState.value = _uiState.value.copy(isLoading = false)
             if (result.isSuccess) {

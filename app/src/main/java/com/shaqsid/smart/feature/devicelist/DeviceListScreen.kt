@@ -23,7 +23,39 @@ fun DeviceListScreen(
 ) {
     val devices by viewModel.devices.collectAsState()
     var deviceToRename by remember { mutableStateOf<SmartDevice?>(null) }
+    var deviceToDelete by remember { mutableStateOf<SmartDevice?>(null) }
     var newDeviceName by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    deviceToDelete?.let { device ->
+        AlertDialog(
+            onDismissRequest = { deviceToDelete = null },
+            title = { Text("Remove Device") },
+            text = { Text("Remove \"${device.name}\" from your home? This unpairs the device.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.removeDevice(device.id)
+                        deviceToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deviceToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     if (deviceToRename != null) {
         AlertDialog(
@@ -33,14 +65,18 @@ fun DeviceListScreen(
                 OutlinedTextField(
                     value = newDeviceName,
                     onValueChange = { newDeviceName = it },
-                    label = { Text("New Name") }
+                    label = { Text("New Name") },
+                    singleLine = true
                 )
             },
             confirmButton = {
-                Button(onClick = {
-                    deviceToRename?.let { viewModel.renameDevice(it.id, newDeviceName) }
-                    deviceToRename = null
-                }) {
+                Button(
+                    onClick = {
+                        deviceToRename?.let { viewModel.renameDevice(it.id, newDeviceName) }
+                        deviceToRename = null
+                    },
+                    enabled = newDeviceName.isNotBlank()
+                ) {
                     Text("Rename")
                 }
             },
@@ -53,6 +89,7 @@ fun DeviceListScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("My Home") },
@@ -88,7 +125,7 @@ fun DeviceListScreen(
                             deviceToRename = device
                             newDeviceName = device.name
                         },
-                        onDelete = { viewModel.removeDevice(device.id) }
+                        onDelete = { deviceToDelete = device }
                     )
                 }
             }
