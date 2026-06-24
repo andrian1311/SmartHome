@@ -16,6 +16,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.shaqsid.smart.feature.adddevice.AddDeviceScreen
 import com.shaqsid.smart.feature.adddevice.AddDeviceViewModel
+import com.shaqsid.smart.feature.auth.LoginScreen
+import com.shaqsid.smart.feature.auth.LoginViewModel
+import com.shaqsid.smart.feature.auth.RegisterScreen
+import com.shaqsid.smart.feature.auth.RegisterViewModel
 import com.shaqsid.smart.feature.devicelist.DeviceListScreen
 import com.shaqsid.smart.feature.devicelist.DeviceListViewModel
 import com.shaqsid.smart.ui.theme.SmartDeviceTheme
@@ -42,19 +46,61 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SmartAppNavigation(appContainer: AppContainer) {
     val navController = rememberNavController()
+    val startDestination = if (appContainer.authUseCases.isLoggedIn()) "device_list" else "login"
 
-    NavHost(navController = navController, startDestination = "device_list") {
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable("login") {
+            val viewModel: LoginViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return LoginViewModel(appContainer.authUseCases) as T
+                    }
+                }
+            )
+            LoginScreen(
+                viewModel = viewModel,
+                onLoginSuccess = {
+                    navController.navigate("device_list") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onNavigateToRegister = { navController.navigate("register") }
+            )
+        }
+        composable("register") {
+            val viewModel: RegisterViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return RegisterViewModel(appContainer.authUseCases) as T
+                    }
+                }
+            )
+            RegisterScreen(
+                viewModel = viewModel,
+                onRegisterSuccess = {
+                    navController.navigate("device_list") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
         composable("device_list") {
             val viewModel: DeviceListViewModel = viewModel(
                 factory = object : ViewModelProvider.Factory {
                     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                        return DeviceListViewModel(appContainer.deviceUseCases) as T
+                        return DeviceListViewModel(appContainer.deviceUseCases, appContainer.authUseCases) as T
                     }
                 }
             )
             DeviceListScreen(
                 viewModel = viewModel,
-                onAddDeviceClick = { navController.navigate("add_device") }
+                onAddDeviceClick = { navController.navigate("add_device") },
+                onLoggedOut = {
+                    navController.navigate("login") {
+                        popUpTo("device_list") { inclusive = true }
+                    }
+                }
             )
         }
         composable("add_device") {

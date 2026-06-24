@@ -4,8 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
-import com.thingclips.smart.android.user.api.IRegisterCallback
-import com.thingclips.smart.android.user.bean.User
 import com.thingclips.smart.home.sdk.ThingHomeSdk
 import com.thingclips.smart.home.sdk.bean.HomeBean
 import com.thingclips.smart.home.sdk.callback.IThingGetHomeListCallback
@@ -30,29 +28,22 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
     private var currentHomeId: Long = 0L
     private val TAG = "DeviceRepositoryImpl"
 
-    init {
-        initializeTuyaSession()
+    override fun initialize() {
+        if (!ThingHomeSdk.getUserInstance().isLogin) {
+            clearSession()
+            return
+        }
+        // Already set up for this session: just pull the latest device state.
+        if (currentHomeId != 0L) {
+            refreshDevices()
+        } else {
+            fetchHomeList()
+        }
     }
 
-    private fun initializeTuyaSession() {
-        if (ThingHomeSdk.getUserInstance().isLogin) {
-            fetchHomeList()
-        } else {
-            ThingHomeSdk.getUserInstance().touristRegisterAndLogin(
-                "1",
-                "SmartUser",
-                object : IRegisterCallback {
-                    override fun onSuccess(user: User?) {
-                        Log.d(TAG, "Tourist login successful: ${user?.username}")
-                        fetchHomeList()
-                    }
-
-                    override fun onError(code: String?, error: String?) {
-                        Log.e(TAG, "Tourist Login Error: $code $error")
-                    }
-                }
-            )
-        }
+    override fun clearSession() {
+        currentHomeId = 0L
+        devicesFlow.value = emptyList()
     }
 
     private fun fetchHomeList() {

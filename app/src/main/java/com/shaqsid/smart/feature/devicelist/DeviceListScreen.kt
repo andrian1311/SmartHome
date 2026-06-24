@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -19,7 +20,8 @@ import com.shaqsid.smart.domain.model.SmartDevice
 @Composable
 fun DeviceListScreen(
     viewModel: DeviceListViewModel,
-    onAddDeviceClick: () -> Unit
+    onAddDeviceClick: () -> Unit,
+    onLoggedOut: () -> Unit
 ) {
     val devices by viewModel.devices.collectAsState()
     var deviceToRename by remember { mutableStateOf<SmartDevice?>(null) }
@@ -93,6 +95,11 @@ fun DeviceListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("My Home") },
+                actions = {
+                    IconButton(onClick = { viewModel.logout(onLoggedOut) }) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,

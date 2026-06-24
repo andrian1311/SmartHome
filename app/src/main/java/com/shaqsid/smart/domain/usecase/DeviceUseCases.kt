@@ -4,6 +4,14 @@ import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
 import kotlinx.coroutines.flow.Flow
 
+class InitializeDevicesUseCase(private val repository: DeviceRepository) {
+    operator fun invoke() = repository.initialize()
+}
+
+class ClearDeviceSessionUseCase(private val repository: DeviceRepository) {
+    operator fun invoke() = repository.clearSession()
+}
+
 class GetDevicesUseCase(private val repository: DeviceRepository) {
     operator fun invoke(): Flow<List<SmartDevice>> {
         return repository.getDevices()
@@ -41,6 +49,8 @@ class RemoveDeviceUseCase(private val repository: DeviceRepository) {
 }
 
 data class DeviceUseCases(
+    val initialize: InitializeDevicesUseCase,
+    val clearSession: ClearDeviceSessionUseCase,
     val getDevices: GetDevicesUseCase,
     val getDevice: GetDeviceUseCase,
     val addDevice: AddDeviceUseCase,

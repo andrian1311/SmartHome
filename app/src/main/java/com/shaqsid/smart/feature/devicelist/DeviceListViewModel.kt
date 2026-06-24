@@ -3,6 +3,7 @@ package com.shaqsid.smart.feature.devicelist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shaqsid.smart.domain.model.SmartDevice
+import com.shaqsid.smart.domain.usecase.AuthUseCases
 import com.shaqsid.smart.domain.usecase.DeviceUseCases
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -13,7 +14,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class DeviceListViewModel(
-    private val deviceUseCases: DeviceUseCases
+    private val deviceUseCases: DeviceUseCases,
+    private val authUseCases: AuthUseCases
 ) : ViewModel() {
 
     val devices: StateFlow<List<SmartDevice>> = deviceUseCases.getDevices()
@@ -26,6 +28,22 @@ class DeviceListViewModel(
     // One-shot messages (errors / confirmations) surfaced to the UI as a snackbar.
     private val _messages = MutableSharedFlow<String>()
     val messages: SharedFlow<String> = _messages.asSharedFlow()
+
+    init {
+        // Load the current user's home and devices when the screen opens.
+        deviceUseCases.initialize()
+    }
+
+    fun logout(onLoggedOut: () -> Unit) {
+        viewModelScope.launch {
+            authUseCases.logout()
+                .onSuccess {
+                    deviceUseCases.clearSession()
+                    onLoggedOut()
+                }
+                .onFailure { emitMessage(it.message ?: "Logout failed") }
+        }
+    }
 
     fun toggleDeviceState(device: SmartDevice) {
         viewModelScope.launch {
