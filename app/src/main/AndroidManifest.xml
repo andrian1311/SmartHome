@@ -23,7 +23,17 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SmartDevice">
-        
+
+        <!-- Tuya/Thing SDK credentials. Some SDK components (e.g. the security prompt)
+             read these from manifest meta-data, so they must be present here in addition
+             to the ThingHomeSdk.init(appKey, appSecret) call. -->
+        <meta-data
+            android:name="THING_SMART_APPKEY"
+            android:value="***REMOVED***" />
+        <meta-data
+            android:name="THING_SMART_SECRET"
+            android:value="***REMOVED***" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
