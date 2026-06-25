@@ -5,6 +5,7 @@ import com.thingclips.smart.android.user.api.ILoginCallback
 import com.thingclips.smart.android.user.api.ILogoutCallback
 import com.thingclips.smart.android.user.api.IRegisterCallback
 import com.thingclips.smart.android.user.bean.User
+import com.thingclips.smart.bizbundle.initializer.BizBundleInitializer
 import com.thingclips.smart.home.sdk.ThingHomeSdk
 import com.thingclips.smart.sdk.api.IResultCallback
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -55,6 +56,7 @@ class AuthRepositoryImpl : AuthRepository {
                 code,
                 object : IRegisterCallback {
                     override fun onSuccess(user: User?) {
+                        BizBundleInitializer.onLogin()
                         if (continuation.isActive) continuation.resume(Result.success(Unit))
                     }
 
@@ -77,6 +79,7 @@ class AuthRepositoryImpl : AuthRepository {
                     password,
                     object : ILoginCallback {
                         override fun onSuccess(user: User?) {
+                            BizBundleInitializer.onLogin()
                             if (continuation.isActive) continuation.resume(Result.success(Unit))
                         }
 

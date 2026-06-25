@@ -7,13 +7,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shaqsid.smart.domain.model.DeviceControl
+import android.app.Activity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,6 +26,7 @@ fun DeviceDetailScreen(
 ) {
     val device by viewModel.device.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
@@ -148,6 +152,30 @@ fun DeviceDetailScreen(
                     color = MaterialTheme.colorScheme.error
                 )
             }
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Primary: Tuya's standard cloud control panel (full per-device UI).
+            Button(
+                onClick = {
+                    val activity = context as? Activity
+                    if (activity == null ||
+                        !BizBundlePanel.openDevicePanel(activity, viewModel.homeId, current.id)
+                    ) {
+                        viewModel.notify("Couldn't open the Tuya control panel.")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Open Full Control Panel")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Opens Tuya's standard panel for this device. Basic controls below work offline.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(modifier = Modifier.height(20.dp))
 
             if (current.controls.isEmpty()) {

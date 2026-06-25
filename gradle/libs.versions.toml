@@ -39,6 +39,14 @@ thing-home-sdk = { group = "com.thingclips.smart", name = "thingsmart", version 
 fastjson = { group = "com.alibaba", name = "fastjson", version = "1.1.67.android" }
 okhttp-urlconnection = { group = "com.squareup.okhttp3", name = "okhttp-urlconnection", version = "3.14.9" }
 
+# Tuya UI BizBundle (standard device control panel). Versions managed by the BOM.
+thing-bizbundle-bom = { group = "com.thingclips.smart", name = "thingsmart-BizBundlesBom", version = "7.5.7" }
+thing-bizbundle-panel = { group = "com.thingclips.smart", name = "thingsmart-bizbundle-panel" }
+thing-bizbundle-panelmore = { group = "com.thingclips.smart", name = "thingsmart-bizbundle-panelmore" }
+thing-bizbundle-basekit = { group = "com.thingclips.smart", name = "thingsmart-bizbundle-basekit" }
+thing-bizbundle-bizkit = { group = "com.thingclips.smart", name = "thingsmart-bizbundle-bizkit" }
+thing-bizbundle-devicekit = { group = "com.thingclips.smart", name = "thingsmart-bizbundle-devicekit" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

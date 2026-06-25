@@ -27,6 +27,9 @@ class DeviceDetailViewModel(
     private val _messages = MutableSharedFlow<String>()
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
+    /** Current home id, needed to open the Tuya BizBundle control panel. */
+    val homeId: Long get() = deviceUseCases.getCurrentHomeId()
+
     /** Writes a data point value (Boolean / Int / String) for any control on this device. */
     fun setControl(dpId: String, value: Any) {
         viewModelScope.launch {
@@ -50,6 +53,11 @@ class DeviceDetailViewModel(
                 .onSuccess { onRemoved() }
                 .onFailure { emitMessage(it.message ?: "Failed to remove device") }
         }
+    }
+
+    /** Shows a one-off message (snackbar) from the UI. */
+    fun notify(message: String) {
+        viewModelScope.launch { emitMessage(message) }
     }
 
     private suspend fun emitMessage(message: String) {

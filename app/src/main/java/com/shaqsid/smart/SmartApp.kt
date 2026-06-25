@@ -2,6 +2,10 @@ package com.shaqsid.smart
 
 import android.app.Application
 import android.util.Log
+import com.thingclips.smart.api.router.UrlBuilder
+import com.thingclips.smart.api.service.RouteEventListener
+import com.thingclips.smart.api.service.ServiceEventListener
+import com.thingclips.smart.bizbundle.initializer.BizBundleInitializer
 import com.thingclips.smart.home.sdk.ThingHomeSdk
 
 class SmartApp : Application() {
@@ -18,8 +22,28 @@ class SmartApp : Application() {
         try {
             ThingHomeSdk.setDebugMode(true)
             ThingHomeSdk.init(this, "***REMOVED***", "***REMOVED***")
+            initBizBundle()
         } catch (e: Exception) {
             Log.e("SmartApp", "ThingHomeSdk.init failed", e)
+        }
+    }
+
+    /**
+     * Initializes the UI BizBundle framework so the standard Tuya device control panel can be
+     * opened (see [com.shaqsid.smart.feature.devicedetail.BizBundlePanel]). Must run after
+     * [ThingHomeSdk.init]; it wires the module router that resolves panel/device services.
+     */
+    private fun initBizBundle() {
+        BizBundleInitializer.init(
+            this,
+            RouteEventListener { code: Int, _: UrlBuilder? ->
+                Log.w("SmartApp", "BizBundle route not found (code=$code)")
+            },
+            ServiceEventListener { serviceName -> Log.w("SmartApp", "BizBundle service not found: $serviceName") }
+        )
+        // Sync BizBundle user-scoped services if a session already exists.
+        if (ThingHomeSdk.getUserInstance().isLogin) {
+            BizBundleInitializer.onLogin()
         }
     }
 

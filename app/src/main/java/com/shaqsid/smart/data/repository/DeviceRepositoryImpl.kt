@@ -50,6 +50,8 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
         devicesFlow.value = emptyList()
     }
 
+    override fun currentHomeId(): Long = currentHomeId
+
     private fun fetchHomeList() {
         ThingHomeSdk.getHomeManagerInstance().queryHomeList(object : IThingGetHomeListCallback {
             override fun onSuccess(homeBeans: List<HomeBean>?) {
@@ -145,8 +147,14 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
      * Unsupported/complex types (raw, bitmap, struct) are skipped.
      */
     private fun parseControls(deviceBean: DeviceBean): List<DeviceControl> {
-        val schemaMap = deviceBean.schemaMap ?: return emptyList()
+        val schemaMap = deviceBean.schemaMap
         val dps = deviceBean.dps ?: emptyMap()
+
+        // Some devices report no schema (e.g. freshly paired). Fall back to inferring basic
+        // controls from the raw DP values so the detail screen isn't empty.
+        if (schemaMap.isNullOrEmpty()) {
+            return parseControlsFromDps(dps)
+        }
 
         return schemaMap.values
             .sortedBy { it.id.toIntOrNull() ?: Int.MAX_VALUE }
@@ -190,6 +198,23 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                     )
 
                     else -> null
+                }
+            }
+    }
+
+    /**
+     * Schema-less fallback: infer controls from the runtime type of each DP value. Booleans become
+     * toggles (most bool DPs are writable); numbers and strings are shown as read-only values since
+     * their range/writability is unknown without a schema.
+     */
+    private fun parseControlsFromDps(dps: Map<String, Any?>): List<DeviceControl> {
+        return dps.entries
+            .sortedBy { it.key.toIntOrNull() ?: Int.MAX_VALUE }
+            .map { (dpId, value) ->
+                val name = "DP $dpId"
+                when (value) {
+                    is Boolean -> DeviceControl.Switch(dpId, name, editable = true, on = value)
+                    else -> DeviceControl.Text(dpId, name, editable = false, current = value?.toString().orEmpty())
                 }
             }
     }
