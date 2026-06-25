@@ -5,14 +5,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.shaqsid.smart.util.Countries
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,6 +25,12 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Detect the device's country without any permission (SIM / time zone / locale).
+    LaunchedEffect(Unit) {
+        viewModel.applyDetectedCountry(Countries.detect(context))
+    }
 
     Column(
         modifier = Modifier
@@ -43,14 +52,11 @@ fun LoginScreen(
         )
         Spacer(modifier = Modifier.height(32.dp))
 
-        OutlinedTextField(
-            value = uiState.countryCode,
-            onValueChange = { viewModel.updateCountryCode(it) },
-            label = { Text("Country code (e.g. 1 = US, 62 = ID)") },
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            enabled = !uiState.isLoading
+        CountryDropdown(
+            selected = uiState.country,
+            onSelected = { viewModel.selectCountry(it) },
+            enabled = !uiState.isLoading,
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(

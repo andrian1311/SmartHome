@@ -8,13 +8,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.shaqsid.smart.util.Countries
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,6 +27,12 @@ fun RegisterScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Detect the device's country without any permission (SIM / time zone / locale).
+    LaunchedEffect(Unit) {
+        viewModel.applyDetectedCountry(Countries.detect(context))
+    }
 
     Scaffold(
         topBar = {
@@ -49,14 +58,11 @@ fun RegisterScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            OutlinedTextField(
-                value = uiState.countryCode,
-                onValueChange = { viewModel.updateCountryCode(it) },
-                label = { Text("Country code (e.g. 1 = US, 62 = ID)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !uiState.isLoading
+            CountryDropdown(
+                selected = uiState.country,
+                onSelected = { viewModel.selectCountry(it) },
+                enabled = !uiState.isLoading,
+                modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(

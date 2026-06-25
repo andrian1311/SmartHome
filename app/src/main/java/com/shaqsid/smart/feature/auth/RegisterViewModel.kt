@@ -3,6 +3,8 @@ package com.shaqsid.smart.feature.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shaqsid.smart.domain.usecase.AuthUseCases
+import com.shaqsid.smart.util.Countries
+import com.shaqsid.smart.util.Country
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,8 +17,19 @@ class RegisterViewModel(
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
-    fun updateCountryCode(value: String) {
-        _uiState.value = _uiState.value.copy(countryCode = value, error = null)
+    fun selectCountry(country: Country) {
+        countryDetected = true
+        _uiState.value = _uiState.value.copy(country = country, error = null)
+    }
+
+    private var countryDetected = false
+
+    /** Applies an auto-detected country once, unless the user already picked one. */
+    fun applyDetectedCountry(country: Country) {
+        if (!countryDetected) {
+            countryDetected = true
+            _uiState.value = _uiState.value.copy(country = country)
+        }
     }
 
     fun updateEmail(value: String) {
@@ -37,7 +50,7 @@ class RegisterViewModel(
 
         viewModelScope.launch {
             _uiState.value = state.copy(isLoading = true, error = null, message = null)
-            authUseCases.sendRegisterCode(state.email.trim(), state.countryCode.trim())
+            authUseCases.sendRegisterCode(state.email.trim(), state.country.dialCode)
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -64,7 +77,7 @@ class RegisterViewModel(
                 state.email.trim(),
                 state.password,
                 state.code.trim(),
-                state.countryCode.trim()
+                state.country.dialCode
             )
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(isLoading = false)
@@ -81,7 +94,7 @@ class RegisterViewModel(
 }
 
 data class RegisterUiState(
-    val countryCode: String = "1",
+    val country: Country = Countries.DEFAULT,
     val email: String = "",
     val password: String = "",
     val code: String = "",
