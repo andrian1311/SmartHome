@@ -42,7 +42,7 @@ fun SwitchControlCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(control.name, style = MaterialTheme.typography.titleMedium)
                 if (control.countdownSeconds > 0) {
-                    CountdownText(control.countdownSeconds)
+                    CountdownText(seconds = control.countdownSeconds, switchOn = control.on)
                 }
             }
             if (control.countdownDpId != null) {
@@ -59,9 +59,13 @@ fun SwitchControlCard(
     }
 }
 
-/** Shows a locally-ticking countdown that re-syncs whenever the device reports a new value. */
+/**
+ * Shows a locally-ticking countdown that re-syncs whenever the device reports a new value.
+ * The countdown flips the switch, so the label reflects the target state: "Off in …" when the
+ * switch is currently on, "On in …" when it's off.
+ */
 @Composable
-private fun CountdownText(seconds: Int) {
+private fun CountdownText(seconds: Int, switchOn: Boolean) {
     var remaining by remember(seconds) { mutableIntStateOf(seconds) }
     LaunchedEffect(seconds) {
         remaining = seconds
@@ -70,8 +74,9 @@ private fun CountdownText(seconds: Int) {
             remaining--
         }
     }
+    val prefix = if (switchOn) "Off in" else "On in"
     Text(
-        text = "Off in ${formatCountdown(remaining)}",
+        text = "$prefix ${formatCountdown(remaining)}",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.primary
     )
