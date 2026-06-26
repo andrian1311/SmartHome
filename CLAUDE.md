@@ -33,4 +33,5 @@ Critical, non-obvious facts:
 ## Conventions
 - Country pickers pass the **dial code** to the SDK (`util/Countries.kt`); UI shows country names.
 - Wrap Tuya SDK calls that can throw synchronously (init failures) — see `AuthRepositoryImpl.guardSdkCall`.
-- `ThingHomeSdk.setDebugMode(true)` is on in `SmartApp.kt`; gate behind `BuildConfig.DEBUG` before release.
+- Tuya verbose logging is gated: `ThingHomeSdk.setDebugMode(BuildConfig.DEBUG)` in `SmartApp.kt`
+  (requires `buildConfig = true` in `buildFeatures`).
