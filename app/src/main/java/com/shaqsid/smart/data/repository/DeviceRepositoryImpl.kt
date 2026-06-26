@@ -10,7 +10,9 @@ import com.thingclips.smart.home.sdk.ThingHomeSdk
 import com.thingclips.smart.home.sdk.bean.HomeBean
 import com.thingclips.smart.home.sdk.callback.IThingGetHomeListCallback
 import com.thingclips.smart.home.sdk.callback.IThingHomeResultCallback
+import com.thingclips.smart.sdk.api.IDevListener
 import com.thingclips.smart.sdk.api.IResultCallback
+import com.thingclips.smart.sdk.api.IThingDevice
 import com.thingclips.smart.sdk.api.IThingSmartActivatorListener
 import com.thingclips.smart.sdk.api.IThingActivatorGetToken
 import com.thingclips.smart.sdk.bean.DeviceBean
@@ -32,6 +34,9 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
     private var currentHomeId: Long = 0L
     private val TAG = "DeviceRepositoryImpl"
 
+    // Per-device listeners that deliver real-time DP/online changes so the UI stays in sync.
+    private val deviceListeners = mutableMapOf<String, IThingDevice>()
+
     override fun initialize() {
         if (!ThingHomeSdk.getUserInstance().isLogin) {
             clearSession()
@@ -47,6 +52,11 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
 
     override fun clearSession() {
         currentHomeId = 0L
+        deviceListeners.values.forEach {
+            runCatching { it.unRegisterDevListener() }
+            runCatching { it.onDestroy() }
+        }
+        deviceListeners.clear()
         devicesFlow.value = emptyList()
     }
 
@@ -126,18 +136,71 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
     }
 
     private fun updateDevicesFlow(tuyaDevices: List<DeviceBean>?) {
-        val smartDevices = tuyaDevices?.map { deviceBean ->
-            // DP "1" is the standard switch data point for most Tuya devices
-            val isOn = deviceBean.dps?.get("1") as? Boolean ?: false
-            SmartDevice(
-                id = deviceBean.devId,
-                name = deviceBean.name ?: "Unknown Device",
-                isOnline = deviceBean.isOnline,
-                isOn = isOn,
-                controls = parseControls(deviceBean)
-            )
-        } ?: emptyList()
+        val smartDevices = tuyaDevices?.map { it.toSmartDevice() } ?: emptyList()
         devicesFlow.value = smartDevices
+        registerDeviceListeners(smartDevices.map { it.id })
+    }
+
+    private fun DeviceBean.toSmartDevice(): SmartDevice {
+        // DP "1" is the standard switch data point for most Tuya devices
+        val isOn = dps?.get("1") as? Boolean ?: false
+        return SmartDevice(
+            id = devId,
+            name = name ?: "Unknown Device",
+            isOnline = isOnline,
+            isOn = isOn,
+            controls = parseControls(this)
+        )
+    }
+
+    /**
+     * Registers a real-time listener per device. DP and online changes (from the app, the physical
+     * device, or anywhere else) are merged into [devicesFlow] so the UI reflects the true state.
+     */
+    private fun registerDeviceListeners(devIds: Collection<String>) {
+        devIds.forEach { devId ->
+            if (deviceListeners.containsKey(devId)) return@forEach
+            val device = ThingHomeSdk.newDeviceInstance(devId) ?: return@forEach
+            device.registerDevListener(object : IDevListener {
+                override fun onDpUpdate(id: String?, dpStr: String?) = applyDpUpdate(id, dpStr)
+                override fun onStatusChanged(id: String?, online: Boolean) = applyOnlineChange(id, online)
+                override fun onNetworkStatusChanged(id: String?, status: Boolean) {}
+                override fun onRemoved(id: String?) {}
+                override fun onDevInfoUpdate(id: String?) {}
+            })
+            deviceListeners[devId] = device
+        }
+    }
+
+    /** Merges a DP-change JSON ({"1":true,...}) into the matching device's controls in the flow. */
+    private fun applyDpUpdate(devId: String?, dpStr: String?) {
+        devId ?: return
+        val json = dpStr?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return
+        devicesFlow.value = devicesFlow.value.map { device ->
+            if (device.id != devId) return@map device
+            val controls = device.controls.map { c ->
+                if (json.has(c.dpId)) c.withValue(json.opt(c.dpId)) else c
+            }
+            val isOn = if (json.has("1")) json.optBoolean("1", device.isOn) else device.isOn
+            device.copy(isOn = isOn, controls = controls)
+        }
+    }
+
+    private fun applyOnlineChange(devId: String?, online: Boolean) {
+        devId ?: return
+        devicesFlow.value = devicesFlow.value.map {
+            if (it.id == devId) it.copy(isOnline = online) else it
+        }
+    }
+
+    /** Returns a copy of this control with its value replaced by the new raw DP value. */
+    private fun DeviceControl.withValue(value: Any?): DeviceControl = when (this) {
+        is DeviceControl.Switch ->
+            copy(on = (value as? Boolean) ?: value?.toString()?.toBooleanStrictOrNull() ?: on)
+        is DeviceControl.Numeric ->
+            copy(current = (value as? Number)?.toInt() ?: value?.toString()?.toIntOrNull() ?: current)
+        is DeviceControl.Enumeration -> copy(current = value?.toString() ?: current)
+        is DeviceControl.Text -> copy(current = value?.toString() ?: current)
     }
 
     /**
