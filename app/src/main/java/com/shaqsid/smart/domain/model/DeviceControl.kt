@@ -14,7 +14,11 @@ sealed interface DeviceControl {
         override val dpId: String,
         override val name: String,
         override val editable: Boolean,
-        val on: Boolean
+        val on: Boolean,
+        /** Paired countdown DP id (turns this switch off after a delay), or null if unsupported. */
+        val countdownDpId: String? = null,
+        /** Remaining countdown seconds for this switch; 0 = no countdown running. */
+        val countdownSeconds: Int = 0
     ) : DeviceControl
 
     data class Numeric(

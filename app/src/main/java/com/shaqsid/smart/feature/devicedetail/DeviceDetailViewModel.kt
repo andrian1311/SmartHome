@@ -73,6 +73,19 @@ class DeviceDetailViewModel(
         }
     }
 
+    /** Toggles a switch; if it has a running countdown, also cancels that countdown. */
+    fun toggleSwitch(control: com.shaqsid.smart.domain.model.DeviceControl.Switch, on: Boolean) {
+        setControl(control.dpId, on)
+        if (control.countdownDpId != null && control.countdownSeconds > 0) {
+            setControl(control.countdownDpId, 0)
+        }
+    }
+
+    /** Sets a switch's countdown in seconds (0 turns the countdown off). */
+    fun setCountdown(countdownDpId: String, seconds: Int) {
+        setControl(countdownDpId, seconds)
+    }
+
     fun rename(newName: String) {
         if (newName.isBlank()) return
         viewModelScope.launch {

@@ -187,7 +187,18 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
         devicesFlow.value = devicesFlow.value.map { device ->
             if (device.id != devId) return@map device
             val controls = device.controls.map { c ->
-                if (json.has(c.dpId)) c.withValue(json.opt(c.dpId)) else c
+                when {
+                    // A switch may also carry a paired countdown DP that updates independently.
+                    c is DeviceControl.Switch -> {
+                        val on = if (json.has(c.dpId)) json.optBoolean(c.dpId, c.on) else c.on
+                        val seconds = if (c.countdownDpId != null && json.has(c.countdownDpId)) {
+                            json.optInt(c.countdownDpId, c.countdownSeconds)
+                        } else c.countdownSeconds
+                        c.copy(on = on, countdownSeconds = seconds)
+                    }
+                    json.has(c.dpId) -> c.withValue(json.opt(c.dpId))
+                    else -> c
+                }
             }
             val isOn = if (json.has("1")) json.optBoolean("1", device.isOn) else device.isOn
             device.copy(isOn = isOn, controls = controls)
@@ -215,31 +226,34 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
      * Maps a device's Tuya schema + current DP values into typed [DeviceControl]s the UI can render.
      * Unsupported/complex types (raw, bitmap, struct) are skipped.
      */
-    /**
-     * Human-readable DP names from Tuya's DP parser (`getDisplayTitle()`), keyed by dp id.
-     * Returns an empty map if the parser plugin or product info isn't available.
-     */
-    private fun buildDpLabels(deviceBean: DeviceBean): Map<String, String> = runCatching {
+    /** Per-DP metadata from Tuya's DP parser: human-readable name + standard code (e.g. `countdown_1`). */
+    private data class DpMeta(val name: String?, val code: String?)
+
+    private fun buildDpMeta(deviceBean: DeviceBean): Map<String, DpMeta> = runCatching {
         val plugin = PluginManager.service(IAppDpParserPlugin::class.java) ?: return emptyMap()
         val parser = plugin.update(deviceBean)
-        parser.getAllDp().mapNotNull { dp ->
-            val title = dp.getDisplayTitle()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            dp.getDpId() to title
-        }.toMap()
+        parser.getAllDp().associate { dp ->
+            val schema = runCatching { dp.getSchema() }.getOrNull()
+            dp.getDpId() to DpMeta(
+                name = dp.getDisplayTitle()?.takeIf { it.isNotBlank() },
+                code = schema?.code?.takeIf { it.isNotBlank() }
+            )
+        }
     }.getOrDefault(emptyMap())
 
     private fun parseControls(deviceBean: DeviceBean): List<DeviceControl> {
         val schemaMap = deviceBean.schemaMap
         val dps = deviceBean.dps ?: emptyMap()
-        val labels = buildDpLabels(deviceBean)
+        val meta = buildDpMeta(deviceBean)
+        val labels = meta.mapNotNull { (id, m) -> m.name?.let { id to it } }.toMap()
 
         // Some devices report no schema (e.g. freshly paired). Fall back to inferring basic
         // controls from the raw DP values so the detail screen isn't empty.
         if (schemaMap.isNullOrEmpty()) {
-            return parseControlsFromDps(dps, labels)
+            return pairCountdowns(parseControlsFromDps(dps, labels), dps, meta)
         }
 
-        return schemaMap.values
+        val schemaControls = schemaMap.values
             .sortedBy { it.id.toIntOrNull() ?: Int.MAX_VALUE }
             .mapNotNull { schema ->
                 val dpId = schema.id ?: return@mapNotNull null
@@ -283,6 +297,49 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                     else -> null
                 }
             }
+        return pairCountdowns(schemaControls, dps, meta)
+    }
+
+    /**
+     * Folds standard `countdown_N` DPs into their matching `switch_N` control as a per-switch
+     * countdown (seconds), and removes them from the standalone control list. Pairs by the numeric
+     * suffix of the DP code (falls back to the suffix in the display name, then to a 1:1 match when
+     * there's a single switch and a single countdown).
+     */
+    private fun pairCountdowns(
+        controls: List<DeviceControl>,
+        dps: Map<String, Any?>,
+        meta: Map<String, DpMeta>
+    ): List<DeviceControl> {
+        fun suffixNumber(s: String?): Int? = s?.let { Regex("(\\d+)").find(it)?.value?.toIntOrNull() }
+        fun isCountdown(dpId: String): Boolean {
+            val m = meta[dpId] ?: return false
+            val code = m.code?.lowercase().orEmpty()
+            val name = m.name?.lowercase().orEmpty()
+            return code.startsWith("countdown") || name.contains("countdown") ||
+                (m.name?.contains("倒计时") == true)
+        }
+
+        val countdownDps = controls.map { it.dpId }.filter { isCountdown(it) }
+        if (countdownDps.isEmpty()) return controls
+
+        val switches = controls.filterIsInstance<DeviceControl.Switch>()
+        val byNumber = countdownDps.associateBy { suffixNumber(meta[it]?.code) ?: suffixNumber(meta[it]?.name) }
+        val singleMatch = switches.size == 1 && countdownDps.size == 1
+
+        return controls.mapNotNull { c ->
+            when {
+                c.dpId in countdownDps -> null // remove standalone countdown rows
+                c is DeviceControl.Switch -> {
+                    val cdDp = if (singleMatch) countdownDps.first()
+                    else (suffixNumber(meta[c.dpId]?.code) ?: suffixNumber(c.name))?.let { byNumber[it] }
+                    if (cdDp != null) {
+                        c.copy(countdownDpId = cdDp, countdownSeconds = (dps[cdDp] as? Number)?.toInt() ?: 0)
+                    } else c
+                }
+                else -> c
+            }
+        }
     }
 
     /**

@@ -162,11 +162,22 @@ fun DeviceDetailScreen(
                 )
             } else {
                 current.controls.forEach { control ->
-                    ControlCard(
-                        control = control,
-                        enabled = current.isOnline && control.editable,
-                        onValueChange = { value -> viewModel.setControl(control.dpId, value) }
-                    )
+                    if (control is DeviceControl.Switch) {
+                        SwitchControlCard(
+                            control = control,
+                            enabled = current.isOnline && control.editable,
+                            onToggle = { on -> viewModel.toggleSwitch(control, on) },
+                            onSetCountdown = { seconds ->
+                                control.countdownDpId?.let { viewModel.setCountdown(it, seconds) }
+                            }
+                        )
+                    } else {
+                        ControlCard(
+                            control = control,
+                            enabled = current.isOnline && control.editable,
+                            onValueChange = { value -> viewModel.setControl(control.dpId, value) }
+                        )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
