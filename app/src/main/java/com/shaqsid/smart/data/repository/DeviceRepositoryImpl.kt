@@ -6,6 +6,8 @@ import com.shaqsid.smart.domain.model.DeviceControl
 import com.shaqsid.smart.domain.model.PairingMode
 import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
+import com.thingclips.sdk.core.PluginManager
+import com.thingclips.smart.interior.api.IAppDpParserPlugin
 import com.thingclips.smart.home.sdk.ThingHomeSdk
 import com.thingclips.smart.home.sdk.bean.HomeBean
 import com.thingclips.smart.home.sdk.callback.IThingGetHomeListCallback
@@ -207,21 +209,35 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
      * Maps a device's Tuya schema + current DP values into typed [DeviceControl]s the UI can render.
      * Unsupported/complex types (raw, bitmap, struct) are skipped.
      */
+    /**
+     * Human-readable DP names from Tuya's DP parser (`getDisplayTitle()`), keyed by dp id.
+     * Returns an empty map if the parser plugin or product info isn't available.
+     */
+    private fun buildDpLabels(deviceBean: DeviceBean): Map<String, String> = runCatching {
+        val plugin = PluginManager.service(IAppDpParserPlugin::class.java) ?: return emptyMap()
+        val parser = plugin.update(deviceBean)
+        parser.getAllDp().mapNotNull { dp ->
+            val title = dp.getDisplayTitle()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            dp.getDpId() to title
+        }.toMap()
+    }.getOrDefault(emptyMap())
+
     private fun parseControls(deviceBean: DeviceBean): List<DeviceControl> {
         val schemaMap = deviceBean.schemaMap
         val dps = deviceBean.dps ?: emptyMap()
+        val labels = buildDpLabels(deviceBean)
 
         // Some devices report no schema (e.g. freshly paired). Fall back to inferring basic
         // controls from the raw DP values so the detail screen isn't empty.
         if (schemaMap.isNullOrEmpty()) {
-            return parseControlsFromDps(dps)
+            return parseControlsFromDps(dps, labels)
         }
 
         return schemaMap.values
             .sortedBy { it.id.toIntOrNull() ?: Int.MAX_VALUE }
             .mapNotNull { schema ->
                 val dpId = schema.id ?: return@mapNotNull null
-                val name = schema.name?.takeIf { it.isNotBlank() } ?: "DP $dpId"
+                val name = labels[dpId] ?: schema.name?.takeIf { it.isNotBlank() } ?: "DP $dpId"
                 val editable = schema.mode?.contains("w") ?: false
                 val value = dps[dpId]
 
@@ -268,11 +284,14 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
      * toggles (most bool DPs are writable); numbers and strings are shown as read-only values since
      * their range/writability is unknown without a schema.
      */
-    private fun parseControlsFromDps(dps: Map<String, Any?>): List<DeviceControl> {
+    private fun parseControlsFromDps(
+        dps: Map<String, Any?>,
+        labels: Map<String, String>
+    ): List<DeviceControl> {
         return dps.entries
             .sortedBy { it.key.toIntOrNull() ?: Int.MAX_VALUE }
             .map { (dpId, value) ->
-                val name = "DP $dpId"
+                val name = labels[dpId] ?: "DP $dpId"
                 when (value) {
                     is Boolean -> DeviceControl.Switch(dpId, name, editable = true, on = value)
                     else -> DeviceControl.Text(dpId, name, editable = false, current = value?.toString().orEmpty())
