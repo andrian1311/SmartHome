@@ -38,7 +38,11 @@ class AppContainer(private val context: Context) {
             updateDeviceStatus = UpdateDeviceStatusUseCase(deviceRepository),
             publishDp = PublishDpUseCase(deviceRepository),
             removeDevice = RemoveDeviceUseCase(deviceRepository),
-            renameDevice = RenameDeviceUseCase(deviceRepository)
+            renameDevice = RenameDeviceUseCase(deviceRepository),
+            getSchedules = GetSchedulesUseCase(deviceRepository),
+            addSchedule = AddScheduleUseCase(deviceRepository),
+            setScheduleEnabled = SetScheduleEnabledUseCase(deviceRepository),
+            deleteSchedule = DeleteScheduleUseCase(deviceRepository)
         )
     }
 }

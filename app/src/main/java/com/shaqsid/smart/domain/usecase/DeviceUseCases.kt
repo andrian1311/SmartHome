@@ -1,5 +1,6 @@
 package com.shaqsid.smart.domain.usecase
 
+import com.shaqsid.smart.domain.model.DeviceSchedule
 import com.shaqsid.smart.domain.model.PairingMode
 import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
@@ -61,6 +62,31 @@ class RemoveDeviceUseCase(private val repository: DeviceRepository) {
     }
 }
 
+class GetSchedulesUseCase(private val repository: DeviceRepository) {
+    suspend operator fun invoke(deviceId: String): Result<List<DeviceSchedule>> =
+        repository.getSchedules(deviceId)
+}
+
+class AddScheduleUseCase(private val repository: DeviceRepository) {
+    suspend operator fun invoke(
+        deviceId: String,
+        time: String,
+        loops: String,
+        dpId: String,
+        turnOn: Boolean
+    ): Result<Unit> = repository.addSchedule(deviceId, time, loops, dpId, turnOn)
+}
+
+class SetScheduleEnabledUseCase(private val repository: DeviceRepository) {
+    suspend operator fun invoke(deviceId: String, scheduleId: String, enabled: Boolean): Result<Unit> =
+        repository.setScheduleEnabled(deviceId, scheduleId, enabled)
+}
+
+class DeleteScheduleUseCase(private val repository: DeviceRepository) {
+    suspend operator fun invoke(deviceId: String, scheduleId: String): Result<Unit> =
+        repository.deleteSchedule(deviceId, scheduleId)
+}
+
 data class DeviceUseCases(
     val initialize: InitializeDevicesUseCase,
     val clearSession: ClearDeviceSessionUseCase,
@@ -71,5 +97,9 @@ data class DeviceUseCases(
     val updateDeviceStatus: UpdateDeviceStatusUseCase,
     val publishDp: PublishDpUseCase,
     val removeDevice: RemoveDeviceUseCase,
-    val renameDevice: RenameDeviceUseCase
+    val renameDevice: RenameDeviceUseCase,
+    val getSchedules: GetSchedulesUseCase,
+    val addSchedule: AddScheduleUseCase,
+    val setScheduleEnabled: SetScheduleEnabledUseCase,
+    val deleteSchedule: DeleteScheduleUseCase
 )

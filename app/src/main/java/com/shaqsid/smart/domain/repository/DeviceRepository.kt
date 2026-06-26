@@ -1,5 +1,6 @@
 package com.shaqsid.smart.domain.repository
 
+import com.shaqsid.smart.domain.model.DeviceSchedule
 import com.shaqsid.smart.domain.model.PairingMode
 import com.shaqsid.smart.domain.model.SmartDevice
 import kotlinx.coroutines.flow.Flow
@@ -24,4 +25,16 @@ interface DeviceRepository {
     suspend fun publishDp(deviceId: String, dpId: String, value: Any): Result<Unit>
     suspend fun renameDevice(id: String, newName: String): Result<Unit>
     suspend fun removeDevice(id: String): Result<Unit>
+
+    // --- Scheduled tasks (timers) ---
+    suspend fun getSchedules(deviceId: String): Result<List<DeviceSchedule>>
+    suspend fun addSchedule(
+        deviceId: String,
+        time: String,
+        loops: String,
+        dpId: String,
+        turnOn: Boolean
+    ): Result<Unit>
+    suspend fun setScheduleEnabled(deviceId: String, scheduleId: String, enabled: Boolean): Result<Unit>
+    suspend fun deleteSchedule(deviceId: String, scheduleId: String): Result<Unit>
 }

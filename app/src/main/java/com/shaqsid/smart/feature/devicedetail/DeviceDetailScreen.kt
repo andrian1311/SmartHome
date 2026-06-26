@@ -27,8 +27,13 @@ fun DeviceDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
 
+    val schedules by viewModel.schedules.collectAsState()
+
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
+    }
+    LaunchedEffect(viewModel.deviceId) {
+        viewModel.loadSchedules()
     }
 
     if (showRenameDialog) {
@@ -166,7 +171,19 @@ fun DeviceDetailScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ScheduleSection(
+                schedules = schedules,
+                switches = current.controls.filterIsInstance<DeviceControl.Switch>(),
+                onAdd = { time, loops, dpId, turnOn -> viewModel.addSchedule(time, loops, dpId, turnOn) },
+                onToggle = { id, enabled -> viewModel.setScheduleEnabled(id, enabled) },
+                onDelete = { id -> viewModel.deleteSchedule(id) }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "Device ID: ${current.id}",
                 style = MaterialTheme.typography.bodySmall,

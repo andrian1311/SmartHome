@@ -3,12 +3,18 @@ package com.shaqsid.smart.data.repository
 import android.content.Context
 import android.util.Log
 import com.shaqsid.smart.domain.model.DeviceControl
+import com.shaqsid.smart.domain.model.DeviceSchedule
 import com.shaqsid.smart.domain.model.PairingMode
 import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
 import com.thingclips.sdk.core.PluginManager
 import com.thingclips.smart.interior.api.IAppDpParserPlugin
+import com.thingclips.smart.android.device.builder.ThingTimerBuilder
+import com.thingclips.smart.android.device.enums.TimerDeviceTypeEnum
 import com.thingclips.smart.home.sdk.ThingHomeSdk
+import com.thingclips.smart.home.sdk.constant.TimerUpdateEnum
+import com.thingclips.smart.sdk.api.IThingDataCallback
+import com.thingclips.smart.sdk.bean.TimerTask
 import com.thingclips.smart.home.sdk.bean.HomeBean
 import com.thingclips.smart.home.sdk.callback.IThingGetHomeListCallback
 import com.thingclips.smart.home.sdk.callback.IThingHomeResultCallback
@@ -498,4 +504,103 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                 }
             })
         }
+
+    // --- Scheduled tasks (timers) ---
+
+    private val timer get() = ThingHomeSdk.getTimerInstance()
+
+    override suspend fun getSchedules(deviceId: String): Result<List<DeviceSchedule>> =
+        suspendCancellableCoroutine { continuation ->
+            timer.getAllTimerList(deviceId, TimerDeviceTypeEnum.DEVICE,
+                object : IThingDataCallback<List<TimerTask>> {
+                    override fun onSuccess(tasks: List<TimerTask>?) {
+                        val schedules = tasks.orEmpty().flatMap { task ->
+                            task.timerList.orEmpty().map { t ->
+                                DeviceSchedule(
+                                    id = t.timerId,
+                                    time = t.time ?: "",
+                                    loops = t.loops ?: DeviceSchedule.LOOPS_ONCE,
+                                    enabled = t.isOpen,
+                                    dpId = t.dpId ?: "",
+                                    turnOn = t.value?.equals("true", ignoreCase = true) ?: false
+                                )
+                            }
+                        }.sortedBy { it.time }
+                        if (continuation.isActive) continuation.resume(Result.success(schedules))
+                    }
+
+                    override fun onError(code: String?, error: String?) {
+                        if (continuation.isActive) {
+                            continuation.resume(Result.failure(Exception(error ?: "Failed to load schedules")))
+                        }
+                    }
+                })
+        }
+
+    override suspend fun addSchedule(
+        deviceId: String,
+        time: String,
+        loops: String,
+        dpId: String,
+        turnOn: Boolean
+    ): Result<Unit> = suspendCancellableCoroutine { continuation ->
+        // actions JSON: {"dps":{"<dpId>":<bool>}, "time":"HH:mm"}
+        val dps = JSONObject().put(dpId, turnOn)
+        val actions = JSONObject().put("dps", dps).put("time", time).toString()
+        val builder = ThingTimerBuilder.Builder()
+            .taskName(SCHEDULE_TASK)
+            .devId(deviceId)
+            .deviceType(TimerDeviceTypeEnum.DEVICE)
+            .actions(actions)
+            .loops(loops)
+            .status(1)
+            .appPush(false)
+            .build()
+        timer.addTimer(builder, object : IResultCallback {
+            override fun onSuccess() {
+                if (continuation.isActive) continuation.resume(Result.success(Unit))
+            }
+
+            override fun onError(code: String?, error: String?) {
+                if (continuation.isActive) {
+                    continuation.resume(Result.failure(Exception(error ?: "Failed to add schedule")))
+                }
+            }
+        })
+    }
+
+    override suspend fun setScheduleEnabled(
+        deviceId: String,
+        scheduleId: String,
+        enabled: Boolean
+    ): Result<Unit> = updateTimer(
+        deviceId, scheduleId, if (enabled) TimerUpdateEnum.OPEN else TimerUpdateEnum.CLOSE
+    )
+
+    override suspend fun deleteSchedule(deviceId: String, scheduleId: String): Result<Unit> =
+        updateTimer(deviceId, scheduleId, TimerUpdateEnum.DELETE)
+
+    private suspend fun updateTimer(
+        deviceId: String,
+        scheduleId: String,
+        op: TimerUpdateEnum
+    ): Result<Unit> = suspendCancellableCoroutine { continuation ->
+        timer.updateTimerStatus(
+            deviceId, TimerDeviceTypeEnum.DEVICE, listOf(scheduleId), op,
+            object : IResultCallback {
+                override fun onSuccess() {
+                    if (continuation.isActive) continuation.resume(Result.success(Unit))
+                }
+
+                override fun onError(code: String?, error: String?) {
+                    if (continuation.isActive) {
+                        continuation.resume(Result.failure(Exception(error ?: "Failed to update schedule")))
+                    }
+                }
+            })
+    }
+
+    private companion object {
+        const val SCHEDULE_TASK = "app_schedule"
+    }
 }
