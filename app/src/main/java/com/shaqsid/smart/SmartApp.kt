@@ -16,7 +16,7 @@ class SmartApp : Application() {
         // Initialize the Tuya / Thing Smart SDK. The appKey/appSecret are also declared as
         // <meta-data> in AndroidManifest.xml because some SDK components read them from there.
         try {
-            ThingHomeSdk.setDebugMode(true)
+            ThingHomeSdk.setDebugMode(BuildConfig.DEBUG)
             ThingHomeSdk.init(this, "***REMOVED***", "***REMOVED***")
         } catch (e: Exception) {
             Log.e("SmartApp", "ThingHomeSdk.init failed", e)
