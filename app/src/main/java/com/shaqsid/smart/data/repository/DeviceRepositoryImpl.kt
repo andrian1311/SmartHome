@@ -573,13 +573,17 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                     override fun onSuccess(tasks: List<TimerTask>?) {
                         val schedules = tasks.orEmpty().flatMap { task ->
                             task.timerList.orEmpty().map { t ->
+                                // The new timer API returns the action in getValue() as a dps JSON
+                                // (e.g. {"1":true}); getDpId() is empty. Fall back to the legacy
+                                // split fields if it isn't JSON.
+                                val (dpId, turnOn) = parseTimerAction(t.dpId, t.value)
                                 DeviceSchedule(
                                     id = t.timerId,
                                     time = t.time ?: "",
                                     loops = t.loops ?: DeviceSchedule.LOOPS_ONCE,
                                     enabled = t.isOpen,
-                                    dpId = t.dpId ?: "",
-                                    turnOn = t.value?.equals("true", ignoreCase = true) ?: false
+                                    dpId = dpId,
+                                    turnOn = turnOn
                                 )
                             }
                         }.sortedBy { it.time }
@@ -593,6 +597,19 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                     }
                 })
         }
+
+    /**
+     * Resolves a timer's target switch DP id and on/off value. The new timer API returns the action
+     * in [value] as a dps JSON (e.g. `{"1":true}`); older timers split it into [dpId]/[value].
+     */
+    private fun parseTimerAction(dpId: String?, value: String?): Pair<String, Boolean> {
+        val json = value?.let { runCatching { JSONObject(it) }.getOrNull() }
+        if (json != null && json.length() > 0) {
+            val key = json.keys().next()
+            return key to json.optBoolean(key, json.optString(key).equals("true", ignoreCase = true))
+        }
+        return (dpId.orEmpty()) to (value?.equals("true", ignoreCase = true) ?: false)
+    }
 
     override suspend fun addSchedule(
         deviceId: String,
