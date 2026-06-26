@@ -50,8 +50,6 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
         devicesFlow.value = emptyList()
     }
 
-    override fun currentHomeId(): Long = currentHomeId
-
     private fun fetchHomeList() {
         ThingHomeSdk.getHomeManagerInstance().queryHomeList(object : IThingGetHomeListCallback {
             override fun onSuccess(homeBeans: List<HomeBean>?) {

@@ -11,9 +11,6 @@ interface DeviceRepository {
     /** Clears the in-memory device/home state, e.g. after logout. */
     fun clearSession()
 
-    /** The current Tuya home id (0 if not loaded yet); needed to open the BizBundle panel. */
-    fun currentHomeId(): Long
-
     fun getDevices(): Flow<List<SmartDevice>>
     fun getDevice(id: String): Flow<SmartDevice?>
     /** Pairs a Wi-Fi device using EZ (SmartConfig) or AP (hotspot) mode. */

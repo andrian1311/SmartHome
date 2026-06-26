@@ -42,14 +42,6 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            // BizBundle dependencies bundle conflicting META-INF metadata files.
-            excludes += setOf(
-                "META-INF/INDEX.LIST",
-                "META-INF/DEPENDENCIES",
-                "META-INF/NOTICE",
-                "META-INF/LICENSE",
-                "META-INF/*.version"
-            )
         }
         jniLibs {
             pickFirsts += "lib/*/libc++_shared.so"
@@ -85,15 +77,6 @@ dependencies {
     implementation(libs.thing.home.sdk)
     implementation(libs.fastjson)
     implementation(libs.okhttp.urlconnection)
-
-    // Tuya UI BizBundle: standard device control panel. The BOM aligns all bizbundle
-    // artifacts (and the core SDK) to one version.
-    implementation(platform(libs.thing.bizbundle.bom))
-    implementation(libs.thing.bizbundle.panel)
-    implementation(libs.thing.bizbundle.panelmore)
-    implementation(libs.thing.bizbundle.basekit)
-    implementation(libs.thing.bizbundle.bizkit)
-    implementation(libs.thing.bizbundle.devicekit)
     // App-specific "security algorithm" component (security-algorithm.aar), downloaded from the
     // Tuya IoT Platform for this appKey + package + SHA-256. Provides libthing_security_algorithm.so
     // which libthing_security.so depends on. Drop the .aar into app/libs/.
