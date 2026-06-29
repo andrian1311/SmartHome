@@ -7,6 +7,11 @@ plugins {
 android {
     configurations.all {
         exclude(group = "com.thingclips.smart", module = "thingsmart-modularCampAnno")
+        // The IPC SDK pulls Fresco 3.1.x, whose native libs are 4 KB-aligned and crash on
+        // 16 KB-page devices. Force Fresco >= 3.6.0 (16 KB-aligned .so files).
+        resolutionStrategy.eachDependency {
+            if (requested.group == "com.facebook.fresco") useVersion("3.6.0")
+        }
     }
     namespace = "com.shaqsid.smart"
     compileSdk = 36
@@ -78,6 +83,8 @@ dependencies {
     implementation(libs.thing.home.sdk)
     implementation(libs.fastjson)
     implementation(libs.okhttp.urlconnection)
+    // IP camera (IPC) SDK for live preview / P2P video.
+    implementation(libs.thing.ipc.sdk)
     // App-specific "security algorithm" component (security-algorithm.aar), downloaded from the
     // Tuya IoT Platform for this appKey + package + SHA-256. Provides libthing_security_algorithm.so
     // which libthing_security.so depends on. Drop the .aar into app/libs/.
