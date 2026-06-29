@@ -8,6 +8,7 @@ import com.shaqsid.smart.domain.model.PairingMode
 import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
 import com.thingclips.sdk.core.PluginManager
+import com.thingclips.smart.android.camera.sdk.ThingIPCSdk
 import com.thingclips.smart.interior.api.IAppDpParserPlugin
 import com.thingclips.smart.android.device.builder.ThingTimerBuilder
 import com.thingclips.smart.android.device.enums.TimerDeviceTypeEnum
@@ -152,12 +153,16 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
     private fun DeviceBean.toSmartDevice(): SmartDevice {
         // DP "1" is the standard switch data point for most Tuya devices
         val isOn = dps?.get("1") as? Boolean ?: false
+        val isCamera = runCatching {
+            ThingIPCSdk.getCameraInstance()?.isIPCDevice(devId) == true
+        }.getOrDefault(false)
         return SmartDevice(
             id = devId,
             name = name ?: "Unknown Device",
             isOnline = isOnline,
             isOn = isOn,
-            controls = parseControls(this)
+            controls = if (isCamera) emptyList() else parseControls(this),
+            isCamera = isCamera
         )
     }
 

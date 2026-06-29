@@ -20,6 +20,7 @@ import com.shaqsid.smart.feature.auth.LoginScreen
 import com.shaqsid.smart.feature.auth.LoginViewModel
 import com.shaqsid.smart.feature.auth.RegisterScreen
 import com.shaqsid.smart.feature.auth.RegisterViewModel
+import com.shaqsid.smart.feature.camera.CameraScreen
 import com.shaqsid.smart.feature.devicedetail.DeviceDetailScreen
 import com.shaqsid.smart.feature.devicedetail.DeviceDetailViewModel
 import com.shaqsid.smart.feature.devicelist.DeviceListScreen
@@ -100,7 +101,10 @@ fun SmartAppNavigation(appContainer: AppContainer) {
             DeviceListScreen(
                 viewModel = viewModel,
                 onAddDeviceClick = { navController.navigate("add_device") },
-                onDeviceClick = { deviceId -> navController.navigate("device_detail/$deviceId") },
+                onDeviceClick = { device ->
+                    val route = if (device.isCamera) "camera/${device.id}" else "device_detail/${device.id}"
+                    navController.navigate(route)
+                },
                 onLoggedOut = {
                     navController.navigate("login") {
                         popUpTo("device_list") { inclusive = true }
@@ -121,6 +125,23 @@ fun SmartAppNavigation(appContainer: AppContainer) {
                 }
             )
             DeviceDetailScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = "camera/{deviceId}",
+            arguments = listOf(navArgument("deviceId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val deviceId = backStackEntry.arguments?.getString("deviceId") ?: ""
+            val viewModel: DeviceDetailViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return DeviceDetailViewModel(appContainer.deviceUseCases, deviceId) as T
+                    }
+                }
+            )
+            CameraScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )

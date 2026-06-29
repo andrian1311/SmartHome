@@ -21,7 +21,7 @@ import com.shaqsid.smart.domain.model.SmartDevice
 fun DeviceListScreen(
     viewModel: DeviceListViewModel,
     onAddDeviceClick: () -> Unit,
-    onDeviceClick: (String) -> Unit,
+    onDeviceClick: (SmartDevice) -> Unit,
     onLoggedOut: () -> Unit
 ) {
     val devices by viewModel.devices.collectAsState()
@@ -128,7 +128,7 @@ fun DeviceListScreen(
                 items(devices, key = { it.id }) { device ->
                     DeviceItem(
                         device = device,
-                        onClick = { onDeviceClick(device.id) },
+                        onClick = { onDeviceClick(device) },
                         onToggle = { viewModel.toggleDeviceState(device) },
                         onRename = {
                             deviceToRename = device
