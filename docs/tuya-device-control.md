@@ -122,7 +122,61 @@ Update one timer: `updateTimer(builder, cb)` (set `.timerId(...)`). By-category:
 
 ---
 
-## 4. Other modules (reference, not used here)
+## 4. IP cameras (IPC) — live preview
+
+IP cameras are **not** controlled via `publishDps`; they use the separate **IPC SDK**
+(`com.thingclips.smart:thingsmart-ipcsdk`) for live video over a P2P channel. Verified
+against **7.5.4** AARs (`thingsmart-ipc-camera-sdk-api`, `thingsmart-ipc-camera-sdk`).
+
+### ⚠️ 16 KB gotcha (already handled)
+The IPC SDK pulls **Fresco 3.1.3**, whose native libs (`libimagepipeline.so`,
+`libnative-filters.so`, `libnative-imagetranscoder.so`) are **4 KB-aligned** and crash
+on 16 KB-page devices. Fixed by forcing Fresco ≥ 3.6.0 in `app/build.gradle.kts`:
+```kotlin
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "com.facebook.fresco") useVersion("3.6.0")
+    }
+}
+```
+Always re-run the 16 KB alignment check after touching IPC/Fresco deps.
+
+### Detect a camera
+```kotlin
+ThingIPCSdk.getCameraInstance()?.isIPCDevice(devId) == true   // route to camera screen
+ThingIPCSdk.getCameraInstance()?.isLowPowerDevice(devId)      // wake via getDoorbell().wirelessWake(devId)
+```
+
+### Live-preview lifecycle (`IThingSmartCameraP2P`)
+```kotlin
+val p2p = ThingIPCSdk.getCameraInstance()?.createCameraP2P(devId)
+// Bind the surface created by ThingCameraView (widget):
+p2p.generateCameraView(view)                       // view = ThingCameraView.createdView()
+// On resume:
+p2p.registerP2PCameraListener(absP2pCameraListener)
+p2p.connect(devId, opCallback)                     // then on success:
+p2p.startPreview(opCallback)
+p2p.setMute(ICameraP2P.PLAYMODE.LIVE, ICameraP2P.MUTE /* or UNMUTE */, opCallback)
+// On pause:
+p2p.stopPreview(opCallback); p2p.removeOnP2PCameraListener(); p2p.disconnect(opCallback)
+// On destroy:
+p2p.destroyP2P()
+```
+- `OperationDelegateCallBack`: `onSuccess(sessionId, requestId, data)` / `onFailure(sessionId, requestId, errCode)`.
+- `AbsP2pCameraListener.onSessionStatusChanged(..., status)`: **-3** = timeout, **-105** = auth
+  failure → surface as error / retry.
+- `ThingCameraView` (widget, `...camera.middleware.widget`): `createVideoView(devId)`,
+  `setCameraViewCallback(AbsVideoViewCallback{ onCreated(view) })`, `createdView()`,
+  `onResume()` / `onPause()`. `PLAYMODE` enum is `LIVE` / `PLAYBACK` (no "PREVIEW").
+- In Compose, embed `ThingCameraView` with `AndroidView` and drive the above from a
+  `LifecycleEventObserver` (resume→connect+preview, pause→stop, dispose→destroy).
+
+> Not implemented yet (available in the SDK): two-way talk (needs `RECORD_AUDIO`),
+> snapshot, recording, playback, PTZ, cloud storage.
+
+---
+
+## 5. Other modules (reference, not used here)
 - **Group Management** (`ThingHomeSdk.getGroupInstance()` / `newGroupInstance(groupId)`):
   create groups of same-product devices, control them together with the same `publishDps`.
 - **Multi-Control Linkage**: link DPs across devices (e.g. 2 switches both toggle a light)
@@ -132,12 +186,15 @@ Update one timer: `updateTimer(builder, cb)` (set `.timerId(...)`). By-category:
 
 ---
 
-## 5. This project's mapping
+## 6. This project's mapping
 | Capability | Where |
 |---|---|
 | Write DP / publishDps | `data/repository/DeviceRepositoryImpl.kt` (`publishDp`, `updateDeviceStatus`) |
 | Real-time DP updates | `DeviceRepositoryImpl` `registerDeviceListeners` / `applyDpUpdate` |
-| DP labels (parser) | `DeviceRepositoryImpl` `buildDpLabels` (DP parser plugin) |
+| DP labels (parser) | `DeviceRepositoryImpl` `buildDpMeta` (DP parser plugin) |
+| Per-switch countdown timers | `DeviceRepositoryImpl` `pairCountdowns` + `feature/devicedetail/SwitchControlCard.kt` |
 | Schedules (timers) | `DeviceRepositoryImpl` schedule methods + `domain/model/DeviceSchedule.kt` |
 | Rename device | `DeviceDetailViewModel.rename` (top-bar edit) |
 | Control + schedule UI | `feature/devicedetail/*` |
+| Camera detection | `DeviceRepositoryImpl.toSmartDevice` → `SmartDevice.isCamera` (`isIPCDevice`) |
+| Camera live preview | `feature/camera/CameraController.kt` + `feature/camera/CameraScreen.kt` |

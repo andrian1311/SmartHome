@@ -23,6 +23,9 @@ Critical, non-obvious facts:
   UI BizBundle was removed because it broke both (see doc §10/§11).
 - `IThingHomeStatusListener` is device add/remove only; DP value changes need a per-device
   `IDevListener` (already wired in `DeviceRepositoryImpl`).
+- IP cameras use the separate **IPC SDK** (`thingsmart-ipcsdk`), not `publishDps` — see
+  [`docs/tuya-device-control.md`](docs/tuya-device-control.md) §4. It pulls Fresco 3.1.x
+  (4 KB libs); we force Fresco ≥ 3.6.0 to keep 16 KB compatibility.
 
 ## Build / run
 - `./gradlew :app:assembleDebug` — APK at `app/build/intermediates/apk/debug/app-debug.apk`
