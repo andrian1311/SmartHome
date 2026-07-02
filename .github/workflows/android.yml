@@ -24,18 +24,20 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Restore Tuya security-algorithm AAR
-        # This account-specific .aar is gitignored (see app/libs/README.md). It is stored,
-        # base64-encoded, in the THING_SECURITY_AAR_BASE64 secret and restored here so the
-        # build can link libthing_security_algorithm.so.
+      - name: Decrypt Tuya security-algorithm AAR
+        # The account-specific .aar itself is gitignored (see app/libs/README.md). An AES-256
+        # encrypted copy (security-algorithm-1.0.0-beta.aar.enc) IS committed; it's useless
+        # without the passphrase, which is stored in the THING_SECURITY_AAR_PASSPHRASE secret.
         env:
-          THING_SECURITY_AAR_BASE64: ${{ secrets.THING_SECURITY_AAR_BASE64 }}
+          THING_SECURITY_AAR_PASSPHRASE: ${{ secrets.THING_SECURITY_AAR_PASSPHRASE }}
         run: |
-          if [ -z "$THING_SECURITY_AAR_BASE64" ]; then
-            echo "::error::THING_SECURITY_AAR_BASE64 secret is not set." && exit 1
+          if [ -z "$THING_SECURITY_AAR_PASSPHRASE" ]; then
+            echo "::error::THING_SECURITY_AAR_PASSPHRASE secret is not set." && exit 1
           fi
-          mkdir -p app/libs
-          echo "$THING_SECURITY_AAR_BASE64" | base64 --decode > app/libs/security-algorithm-1.0.0-beta.aar
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 \
+            -in app/libs/security-algorithm-1.0.0-beta.aar.enc \
+            -out app/libs/security-algorithm-1.0.0-beta.aar \
+            -pass pass:"$THING_SECURITY_AAR_PASSPHRASE"
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew

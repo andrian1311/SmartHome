@@ -27,13 +27,17 @@ push/PR. Add these **repository secrets** (Settings â†’ Secrets and variables â†
 |---|---|
 | `THING_APP_KEY` | Tuya appKey |
 | `THING_APP_SECRET` | Tuya appSecret |
-| `THING_SECURITY_AAR_BASE64` | base64 of your `security-algorithm.aar` |
+| `THING_SECURITY_AAR_PASSPHRASE` | passphrase used to encrypt the committed `.aar.enc` |
 
-Set them with the `gh` CLI (run from the repo root, after the remote exists):
+The `.aar` is too large for a GitHub secret (48 KB limit), so an **AES-256 encrypted copy**
+(`app/libs/security-algorithm-1.0.0-beta.aar.enc`) is committed and decrypted in CI with the
+passphrase secret. To (re)generate the encrypted file after replacing the `.aar`:
 ```bash
-gh secret set THING_APP_KEY --body 'your_tuya_app_key'
-gh secret set THING_APP_SECRET --body 'your_tuya_app_secret'
-base64 -i app/libs/security-algorithm-1.0.0-beta.aar | gh secret set THING_SECURITY_AAR_BASE64
+# pick/keep a strong passphrase and store it as the THING_SECURITY_AAR_PASSPHRASE secret
+openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt \
+  -in  app/libs/security-algorithm-1.0.0-beta.aar \
+  -out app/libs/security-algorithm-1.0.0-beta.aar.enc \
+  -pass pass:'your_passphrase'
 ```
 
 > Note: credentials compiled into an APK can still be extracted by decompiling it. Keeping them
