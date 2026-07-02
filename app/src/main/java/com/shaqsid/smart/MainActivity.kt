@@ -16,6 +16,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.shaqsid.smart.feature.adddevice.AddDeviceScreen
 import com.shaqsid.smart.feature.adddevice.AddDeviceViewModel
+import com.shaqsid.smart.feature.auth.ForgotPasswordScreen
+import com.shaqsid.smart.feature.auth.ForgotPasswordViewModel
 import com.shaqsid.smart.feature.auth.LoginScreen
 import com.shaqsid.smart.feature.auth.LoginViewModel
 import com.shaqsid.smart.feature.auth.RegisterScreen
@@ -69,7 +71,22 @@ fun SmartAppNavigation(appContainer: AppContainer) {
                         popUpTo("login") { inclusive = true }
                     }
                 },
-                onNavigateToRegister = { navController.navigate("register") }
+                onNavigateToRegister = { navController.navigate("register") },
+                onNavigateToForgotPassword = { navController.navigate("forgot_password") }
+            )
+        }
+        composable("forgot_password") {
+            val viewModel: ForgotPasswordViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return ForgotPasswordViewModel(appContainer.authUseCases) as T
+                    }
+                }
+            )
+            ForgotPasswordScreen(
+                viewModel = viewModel,
+                onResetSuccess = { navController.popBackStack() },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable("register") {

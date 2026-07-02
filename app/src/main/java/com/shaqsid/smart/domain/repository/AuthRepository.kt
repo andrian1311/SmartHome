@@ -18,6 +18,17 @@ interface AuthRepository {
     /** Logs in with an existing email/password account. */
     suspend fun login(email: String, password: String, countryCode: String): Result<Unit>
 
+    /** Sends an email verification code used to reset a forgotten password. */
+    suspend fun sendResetPasswordCode(email: String, countryCode: String): Result<Unit>
+
+    /** Sets a new password for an account using the emailed verification code. */
+    suspend fun resetPassword(
+        email: String,
+        code: String,
+        newPassword: String,
+        countryCode: String
+    ): Result<Unit>
+
     /** Ends the current session. */
     suspend fun logout(): Result<Unit>
 }

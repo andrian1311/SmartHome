@@ -22,7 +22,8 @@ import com.shaqsid.smart.util.Countries
 fun LoginScreen(
     viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -96,6 +97,9 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(onClick = onNavigateToRegister, enabled = !uiState.isLoading) {
             Text("Don't have an account? Register")
+        }
+        TextButton(onClick = onNavigateToForgotPassword, enabled = !uiState.isLoading) {
+            Text("Forgot password?")
         }
         if (uiState.error != null) {
             Spacer(modifier = Modifier.height(16.dp))

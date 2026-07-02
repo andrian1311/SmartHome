@@ -23,6 +23,8 @@ class AppContainer(private val context: Context) {
             sendRegisterCode = SendRegisterCodeUseCase(authRepository),
             register = RegisterUseCase(authRepository),
             login = LoginUseCase(authRepository),
+            sendResetPasswordCode = SendResetPasswordCodeUseCase(authRepository),
+            resetPassword = ResetPasswordUseCase(authRepository),
             logout = LogoutUseCase(authRepository)
         )
     }

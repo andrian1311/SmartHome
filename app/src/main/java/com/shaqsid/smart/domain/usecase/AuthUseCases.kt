@@ -25,6 +25,20 @@ class LoginUseCase(private val repository: AuthRepository) {
         repository.login(email, password, countryCode)
 }
 
+class SendResetPasswordCodeUseCase(private val repository: AuthRepository) {
+    suspend operator fun invoke(email: String, countryCode: String): Result<Unit> =
+        repository.sendResetPasswordCode(email, countryCode)
+}
+
+class ResetPasswordUseCase(private val repository: AuthRepository) {
+    suspend operator fun invoke(
+        email: String,
+        code: String,
+        newPassword: String,
+        countryCode: String
+    ): Result<Unit> = repository.resetPassword(email, code, newPassword, countryCode)
+}
+
 class LogoutUseCase(private val repository: AuthRepository) {
     suspend operator fun invoke(): Result<Unit> = repository.logout()
 }
@@ -34,5 +48,7 @@ data class AuthUseCases(
     val sendRegisterCode: SendRegisterCodeUseCase,
     val register: RegisterUseCase,
     val login: LoginUseCase,
+    val sendResetPasswordCode: SendResetPasswordCodeUseCase,
+    val resetPassword: ResetPasswordUseCase,
     val logout: LogoutUseCase
 )

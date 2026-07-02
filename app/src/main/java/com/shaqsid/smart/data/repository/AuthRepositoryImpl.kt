@@ -4,6 +4,7 @@ import com.shaqsid.smart.domain.repository.AuthRepository
 import com.thingclips.smart.android.user.api.ILoginCallback
 import com.thingclips.smart.android.user.api.ILogoutCallback
 import com.thingclips.smart.android.user.api.IRegisterCallback
+import com.thingclips.smart.android.user.api.IResetPasswordCallback
 import com.thingclips.smart.android.user.bean.User
 import com.thingclips.smart.home.sdk.ThingHomeSdk
 import com.thingclips.smart.sdk.api.IResultCallback
@@ -90,6 +91,57 @@ class AuthRepositoryImpl : AuthRepository {
             }
         }
 
+    override suspend fun sendResetPasswordCode(email: String, countryCode: String): Result<Unit> =
+        suspendCancellableCoroutine { continuation ->
+            // Same verify-code API as registration, but type 3 = reset-password code.
+            guardSdkCall(continuation) {
+                userInstance.sendVerifyCodeWithUserName(
+                    email,
+                    "",
+                    countryCode,
+                    VERIFY_CODE_TYPE_RESET_PASSWORD,
+                    object : IResultCallback {
+                        override fun onSuccess() {
+                            if (continuation.isActive) continuation.resume(Result.success(Unit))
+                        }
+
+                        override fun onError(code: String?, error: String?) {
+                            if (continuation.isActive) {
+                                continuation.resume(Result.failure(Exception(error ?: "Failed to send code")))
+                            }
+                        }
+                    }
+                )
+            }
+        }
+
+    override suspend fun resetPassword(
+        email: String,
+        code: String,
+        newPassword: String,
+        countryCode: String
+    ): Result<Unit> = suspendCancellableCoroutine { continuation ->
+        guardSdkCall(continuation) {
+            userInstance.resetEmailPassword(
+                countryCode,
+                email,
+                code,
+                newPassword,
+                object : IResetPasswordCallback {
+                    override fun onSuccess() {
+                        if (continuation.isActive) continuation.resume(Result.success(Unit))
+                    }
+
+                    override fun onError(code: String?, error: String?) {
+                        if (continuation.isActive) {
+                            continuation.resume(Result.failure(Exception(error ?: "Failed to reset password")))
+                        }
+                    }
+                }
+            )
+        }
+    }
+
     override suspend fun logout(): Result<Unit> =
         suspendCancellableCoroutine { continuation ->
             guardSdkCall(continuation) {
@@ -131,5 +183,10 @@ class AuthRepositoryImpl : AuthRepository {
                 )
             }
         }
+    }
+
+    private companion object {
+        // sendVerifyCodeWithUserName type: 1 = register, 2 = login, 3 = reset password.
+        const val VERIFY_CODE_TYPE_RESET_PASSWORD = 3
     }
 }
