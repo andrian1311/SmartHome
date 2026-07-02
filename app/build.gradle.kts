@@ -1,8 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
 }
+
+// Tuya credentials are kept out of source control. They're read from an environment
+// variable (used by CI) or, failing that, from local.properties (used for local dev).
+// Neither is committed — see local.properties.example for the keys to set.
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+fun secret(name: String): String =
+    System.getenv(name) ?: localProperties.getProperty(name) ?: ""
 
 android {
     configurations.all {
@@ -24,6 +36,16 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Tuya appKey/appSecret, injected from env (CI) or local.properties (dev). Exposed to
+        // Kotlin via BuildConfig and to AndroidManifest via manifest placeholders (the SDK reads
+        // both). Empty when unset so the build doesn't fail; the app just can't reach Tuya.
+        val thingAppKey = secret("THING_APP_KEY")
+        val thingAppSecret = secret("THING_APP_SECRET")
+        buildConfigField("String", "THING_APP_KEY", "\"$thingAppKey\"")
+        buildConfigField("String", "THING_APP_SECRET", "\"$thingAppSecret\"")
+        manifestPlaceholders["THING_SMART_APPKEY"] = thingAppKey
+        manifestPlaceholders["THING_SMART_SECRET"] = thingAppSecret
 
         // The Tuya/Thing SDK only ships native libraries (incl. libthing_security.so)
         // for ARM. Limit ABIs so we never package a broken x86/x86_64 variant.

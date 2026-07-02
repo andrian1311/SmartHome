@@ -1,0 +1,7 @@
+# Copy this file to `local.properties` and fill in your own values.
+# `local.properties` is gitignored and must never be committed.
+#
+# Tuya / Thing Smart SDK credentials (from the Tuya IoT platform for your app).
+# In CI these come from GitHub Actions secrets of the same name instead.
+THING_APP_KEY=your_tuya_app_key
+THING_APP_SECRET=your_tuya_app_secret

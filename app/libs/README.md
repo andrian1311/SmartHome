@@ -14,7 +14,7 @@ java.lang.UnsatisfiedLinkError: No implementation found for ...
 ## How to get the file
 
 1. Go to the Tuya IoT Platform → **App** → **App SDK** → your app
-   (the one using appKey `***REMOVED***`).
+   (the one whose appKey/appSecret you set in `local.properties`; see `local.properties.example`).
 2. Make sure the **Android** package name `com.shaqsid.smart` and the debug **SHA-256**
    are registered for this app.
 3. Download the SDK / "Get security image". The bundle contains **`security-algorithm.aar`**

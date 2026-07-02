@@ -1,0 +1,54 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore Tuya security-algorithm AAR
+        # This account-specific .aar is gitignored (see app/libs/README.md). It is stored,
+        # base64-encoded, in the THING_SECURITY_AAR_BASE64 secret and restored here so the
+        # build can link libthing_security_algorithm.so.
+        env:
+          THING_SECURITY_AAR_BASE64: ${{ secrets.THING_SECURITY_AAR_BASE64 }}
+        run: |
+          if [ -z "$THING_SECURITY_AAR_BASE64" ]; then
+            echo "::error::THING_SECURITY_AAR_BASE64 secret is not set." && exit 1
+          fi
+          mkdir -p app/libs
+          echo "$THING_SECURITY_AAR_BASE64" | base64 --decode > app/libs/security-algorithm-1.0.0-beta.aar
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build debug APK
+        env:
+          THING_APP_KEY: ${{ secrets.THING_APP_KEY }}
+          THING_APP_SECRET: ${{ secrets.THING_APP_SECRET }}
+        run: ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

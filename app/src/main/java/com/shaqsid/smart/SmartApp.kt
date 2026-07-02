@@ -26,7 +26,7 @@ class SmartApp : Application() {
         // <meta-data> in AndroidManifest.xml because some SDK components read them from there.
         try {
             ThingHomeSdk.setDebugMode(BuildConfig.DEBUG)
-            ThingHomeSdk.init(this, "***REMOVED***", "***REMOVED***")
+            ThingHomeSdk.init(this, BuildConfig.THING_APP_KEY, BuildConfig.THING_APP_SECRET)
         } catch (e: Exception) {
             Log.e("SmartApp", "ThingHomeSdk.init failed", e)
         }

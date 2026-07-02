@@ -29,10 +29,10 @@
              to the ThingHomeSdk.init(appKey, appSecret) call. -->
         <meta-data
             android:name="THING_SMART_APPKEY"
-            android:value="***REMOVED***" />
+            android:value="${THING_SMART_APPKEY}" />
         <meta-data
             android:name="THING_SMART_SECRET"
-            android:value="***REMOVED***" />
+            android:value="${THING_SMART_SECRET}" />
 
         <activity
             android:name=".MainActivity"
