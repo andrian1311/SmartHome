@@ -256,6 +256,9 @@ If ever revisited, isolate it and re-test login after every dependency change.
    `com.thingclips.security.prompt` uncaught exception (see `SmartApp.kt`).
 6. **Stale switch UI** → register `IDevListener`; `IThingHomeStatusListener` is add/remove only (§7).
 7. **BizBundle broke login + bloated deps** → reverted (§10).
+8. **Camera crash `SimpleDraweeView was not initialized!`** → forcing Fresco ≥ 3.6.0 (for 16 KB)
+   disables the IPC SDK's auto-init; call `Fresco.initialize()` yourself in `SmartApp.onCreate`
+   (see `tuya-device-control.md` §4).
 
 ---
 

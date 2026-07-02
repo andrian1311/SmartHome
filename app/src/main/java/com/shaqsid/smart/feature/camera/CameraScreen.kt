@@ -1,22 +1,32 @@
 package com.shaqsid.smart.feature.camera
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.shaqsid.smart.domain.model.PtzDirection
 import com.shaqsid.smart.feature.devicedetail.DeviceDetailViewModel
 import com.thingclips.smart.camera.middleware.widget.AbsVideoViewCallback
 import com.thingclips.smart.camera.middleware.widget.ThingCameraView
@@ -190,6 +200,16 @@ fun CameraScreen(
                 }
             }
 
+            // Pan/tilt controls — only for cameras whose schema exposes ptz_control.
+            if (device?.ptz != null) {
+                Spacer(Modifier.height(24.dp))
+                PtzControls(
+                    enabled = device?.isOnline == true,
+                    onMove = { viewModel.ptzMove(it) },
+                    onStop = { viewModel.ptzStop() }
+                )
+            }
+
             if (device?.isOnline == false) {
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -200,5 +220,67 @@ fun CameraScreen(
                 )
             }
         }
+    }
+}
+
+/** A directional D-pad that pans/tilts the camera while a button is held. */
+@Composable
+private fun PtzControls(
+    enabled: Boolean,
+    onMove: (PtzDirection) -> Unit,
+    onStop: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("Move camera", style = MaterialTheme.typography.titleSmall)
+        PtzButton(Icons.Filled.KeyboardArrowUp, "Up", PtzDirection.UP, enabled, onMove, onStop)
+        Row(horizontalArrangement = Arrangement.spacedBy(56.dp)) {
+            PtzButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Left", PtzDirection.LEFT, enabled, onMove, onStop)
+            PtzButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Right", PtzDirection.RIGHT, enabled, onMove, onStop)
+        }
+        PtzButton(Icons.Filled.KeyboardArrowDown, "Down", PtzDirection.DOWN, enabled, onMove, onStop)
+    }
+}
+
+/**
+ * A single press-and-hold direction button: sends the move command on press and the stop
+ * command on release. Uses a raw pointer gesture (not onClick) so movement tracks the hold.
+ */
+@Composable
+private fun PtzButton(
+    icon: ImageVector,
+    label: String,
+    direction: PtzDirection,
+    enabled: Boolean,
+    onMove: (PtzDirection) -> Unit,
+    onStop: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .clip(CircleShape)
+            .background(
+                if (enabled) MaterialTheme.colorScheme.secondaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant
+            )
+            .pointerInput(enabled, direction) {
+                if (!enabled) return@pointerInput
+                detectTapGestures(onPress = {
+                    onMove(direction)
+                    tryAwaitRelease()
+                    onStop()
+                })
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (enabled) MaterialTheme.colorScheme.onSecondaryContainer
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

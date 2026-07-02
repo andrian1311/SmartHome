@@ -86,6 +86,18 @@ class DeviceDetailViewModel(
         setControl(countdownDpId, seconds)
     }
 
+    /** Starts panning/tilting the camera in [direction]; no-op if the camera has no PTZ. */
+    fun ptzMove(direction: com.shaqsid.smart.domain.model.PtzDirection) {
+        val ptz = device.value?.ptz ?: return
+        setControl(ptz.controlDpId, direction.dpValue)
+    }
+
+    /** Stops an in-progress pan/tilt; no-op if the camera exposes no `ptz_stop` DP. */
+    fun ptzStop() {
+        val stopDpId = device.value?.ptz?.stopDpId ?: return
+        setControl(stopDpId, true)
+    }
+
     fun rename(newName: String) {
         if (newName.isBlank()) return
         viewModelScope.launch {

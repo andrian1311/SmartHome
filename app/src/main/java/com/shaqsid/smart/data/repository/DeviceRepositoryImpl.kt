@@ -5,6 +5,7 @@ import android.util.Log
 import com.shaqsid.smart.domain.model.DeviceControl
 import com.shaqsid.smart.domain.model.DeviceSchedule
 import com.shaqsid.smart.domain.model.PairingMode
+import com.shaqsid.smart.domain.model.PtzControl
 import com.shaqsid.smart.domain.model.SmartDevice
 import com.shaqsid.smart.domain.repository.DeviceRepository
 import com.thingclips.sdk.core.PluginManager
@@ -170,8 +171,20 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
             isOnline = isOnline,
             isOn = isOn,
             controls = if (isCamera) emptyList() else parseControls(this),
-            isCamera = isCamera
+            isCamera = isCamera,
+            ptz = if (isCamera) detectPtz(this) else null
         )
+    }
+
+    /**
+     * Detects pan/tilt support by looking up the standard `ptz_control` (and optional `ptz_stop`)
+     * DP codes in the device schema. Returns null for fixed cameras that don't expose them.
+     */
+    private fun detectPtz(deviceBean: DeviceBean): PtzControl? {
+        val meta = buildDpMeta(deviceBean)
+        val controlDpId = meta.entries.firstOrNull { it.value.code == "ptz_control" }?.key ?: return null
+        val stopDpId = meta.entries.firstOrNull { it.value.code == "ptz_stop" }?.key
+        return PtzControl(controlDpId, stopDpId)
     }
 
     /**

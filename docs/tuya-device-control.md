@@ -141,6 +141,14 @@ configurations.all {
 ```
 Always re-run the 16 KB alignment check after touching IPC/Fresco deps.
 
+**Side effect — must init Fresco yourself.** Forcing Fresco ≥ 3.6.0 disables the IPC SDK's
+bundled auto-init, so `ThingCameraView` crashes on first `createVideoView` with
+`NullPointerException: SimpleDraweeView was not initialized!`. Fix: call `Fresco.initialize()`
+once at startup (guarded) — see `SmartApp.onCreate`:
+```kotlin
+if (!Fresco.hasBeenInitialized()) Fresco.initialize(this)
+```
+
 ### Detect a camera
 ```kotlin
 ThingIPCSdk.getCameraInstance()?.isIPCDevice(devId) == true   // route to camera screen
@@ -171,8 +179,28 @@ p2p.destroyP2P()
 - In Compose, embed `ThingCameraView` with `AndroidView` and drive the above from a
   `LifecycleEventObserver` (resume→connect+preview, pause→stop, dispose→destroy).
 
+### Pan/tilt (PTZ) — via **standard DPs**, not the P2P channel
+PTZ cameras that can rotate expose two **normal data points** (control them with the same
+`publishDps` used for switches — *not* a P2P/motor API):
+- **`ptz_control`** — enum, the movement direction. Send the enum **string** value.
+- **`ptz_stop`** — boolean, send `true` to halt an in-progress move.
+
+Standard `ptz_control` enum → direction mapping (8-way; the odd values are diagonals):
+
+| value | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|-------|----|----------|-----|----------|----|----------|-----|----------|
+| dir   | up | up-right | right | down-right | down | down-left | left | up-left |
+
+- **Detect support ("if the camera can move"):** look up the standard **code** (not a hardcoded
+  DP id) in the schema — `ptz_control` present ⇒ PTZ, absent ⇒ fixed camera. DP ids vary by
+  product (e.g. this project's test cam uses `119`=`ptz_control`, `116`=`ptz_stop`); resolve the
+  code→id via the DP parser (`buildDpMeta`). See `DeviceRepositoryImpl.detectPtz`.
+- **UX:** press-and-hold — publish the direction on press, `ptz_stop=true` on release
+  (`feature/camera/CameraScreen.kt` `PtzControls`/`PtzButton`, driven via
+  `DeviceDetailViewModel.ptzMove`/`ptzStop`).
+
 > Not implemented yet (available in the SDK): two-way talk (needs `RECORD_AUDIO`),
-> snapshot, recording, playback, PTZ, cloud storage.
+> snapshot, recording, playback, cloud storage. (Basic pan/tilt PTZ **is** implemented — above.)
 
 ---
 
@@ -197,4 +225,6 @@ p2p.destroyP2P()
 | Rename device | `DeviceDetailViewModel.rename` (top-bar edit) |
 | Control + schedule UI | `feature/devicedetail/*` |
 | Camera detection | `DeviceRepositoryImpl.toSmartDevice` → `SmartDevice.isCamera` (`isIPCDevice`) |
+| Camera live preview | `feature/camera/CameraController.kt` + `CameraScreen.kt` (P2P lifecycle) |
+| Camera PTZ (pan/tilt) | `DeviceRepositoryImpl.detectPtz` → `SmartDevice.ptz`; `DeviceDetailViewModel.ptzMove`/`ptzStop`; `CameraScreen.PtzControls` |
 | Camera live preview | `feature/camera/CameraController.kt` + `feature/camera/CameraScreen.kt` |
