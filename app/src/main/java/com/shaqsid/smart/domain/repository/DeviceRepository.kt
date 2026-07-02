@@ -39,6 +39,14 @@ interface DeviceRepository {
         dpId: String,
         turnOn: Boolean
     ): Result<Unit>
+    suspend fun updateSchedule(
+        deviceId: String,
+        scheduleId: String,
+        time: String,
+        loops: String,
+        dpId: String,
+        turnOn: Boolean
+    ): Result<Unit>
     suspend fun setScheduleEnabled(deviceId: String, scheduleId: String, enabled: Boolean): Result<Unit>
     suspend fun deleteSchedule(deviceId: String, scheduleId: String): Result<Unit>
 }

@@ -115,8 +115,19 @@ ThingHomeSdk.getTimerInstance().updateTimerStatus(
     devId, TimerDeviceTypeEnum.DEVICE, listOf(timerId),
     TimerUpdateEnum.DELETE /* or OPEN / CLOSE */, callback)
 ```
-Update one timer: `updateTimer(builder, cb)` (set `.timerId(...)`). By-category:
-`updateCategoryTimerStatus(taskName, devId, type, TimerUpdateEnum, cb)`.
+### Edit an existing timer
+Reuse the **same `ThingTimerBuilder`** as add (time/loops/actions/status/…) plus the existing
+timer id, then call `updateTimer`:
+```kotlin
+val builder = /* same builder as addTimer */ .timerId(timerId /* Long */).build()
+ThingHomeSdk.getTimerInstance().updateTimer(builder, object : IResultCallback { /* ... */ })
+```
+- `getTimerInstance()` returns **`IThingCommonTimer`** (has `addTimer`/`updateTimer`/`getAllTimerList`/
+  `updateTimerStatus`) — *not* the deprecated `IThingTimer`.
+- ⚠️ `ThingTimerBuilder.Builder.timerId(long)` takes a **Long**, but `Timer.getTimerId()` returns a
+  **String** — convert (`scheduleId.toLong()`) or `updateTimer` silently targets the wrong/no timer.
+
+By-category: `updateCategoryTimerStatus(taskName, devId, type, TimerUpdateEnum, cb)`.
 
 > Old API (`getTimerManagerInstance()`) is deprecated; new API can still read old timers.
 
@@ -221,7 +232,8 @@ Standard `ptz_control` enum → direction mapping (8-way; the odd values are dia
 | Real-time DP updates | `DeviceRepositoryImpl` `registerDeviceListeners` / `applyDpUpdate` |
 | DP labels (parser) | `DeviceRepositoryImpl` `buildDpMeta` (DP parser plugin) |
 | Per-switch countdown timers | `DeviceRepositoryImpl` `pairCountdowns` + `feature/devicedetail/SwitchControlCard.kt` |
-| Schedules (timers) | `DeviceRepositoryImpl` schedule methods + `domain/model/DeviceSchedule.kt` |
+| Schedules (timers) | `DeviceRepositoryImpl` schedule methods (add/**update**/enable/delete) + `domain/model/DeviceSchedule.kt` |
+| Add/edit schedule UI | `feature/devicedetail/ScheduleSection.kt` (`ScheduleDialog`; tap a row to edit) |
 | Rename device | `DeviceDetailViewModel.rename` (top-bar edit) |
 | Control + schedule UI | `feature/devicedetail/*` |
 | Camera detection | `DeviceRepositoryImpl.toSmartDevice` → `SmartDevice.isCamera` (`isIPCDevice`) |

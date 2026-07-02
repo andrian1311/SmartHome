@@ -81,6 +81,17 @@ class AddScheduleUseCase(private val repository: DeviceRepository) {
     ): Result<Unit> = repository.addSchedule(deviceId, time, loops, dpId, turnOn)
 }
 
+class UpdateScheduleUseCase(private val repository: DeviceRepository) {
+    suspend operator fun invoke(
+        deviceId: String,
+        scheduleId: String,
+        time: String,
+        loops: String,
+        dpId: String,
+        turnOn: Boolean
+    ): Result<Unit> = repository.updateSchedule(deviceId, scheduleId, time, loops, dpId, turnOn)
+}
+
 class SetScheduleEnabledUseCase(private val repository: DeviceRepository) {
     suspend operator fun invoke(deviceId: String, scheduleId: String, enabled: Boolean): Result<Unit> =
         repository.setScheduleEnabled(deviceId, scheduleId, enabled)
@@ -105,6 +116,7 @@ data class DeviceUseCases(
     val renameDevice: RenameDeviceUseCase,
     val getSchedules: GetSchedulesUseCase,
     val addSchedule: AddScheduleUseCase,
+    val updateSchedule: UpdateScheduleUseCase,
     val setScheduleEnabled: SetScheduleEnabledUseCase,
     val deleteSchedule: DeleteScheduleUseCase
 )

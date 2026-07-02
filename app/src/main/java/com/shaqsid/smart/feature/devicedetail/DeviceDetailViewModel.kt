@@ -49,6 +49,14 @@ class DeviceDetailViewModel(
         }
     }
 
+    fun updateSchedule(scheduleId: String, time: String, loops: String, dpId: String, turnOn: Boolean) {
+        viewModelScope.launch {
+            deviceUseCases.updateSchedule(deviceId, scheduleId, time, loops, dpId, turnOn)
+                .onSuccess { emitMessage("Schedule updated"); loadSchedules() }
+                .onFailure { emitMessage(it.message ?: "Failed to update schedule") }
+        }
+    }
+
     fun setScheduleEnabled(scheduleId: String, enabled: Boolean) {
         viewModelScope.launch {
             deviceUseCases.setScheduleEnabled(deviceId, scheduleId, enabled)

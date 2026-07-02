@@ -190,6 +190,7 @@ fun DeviceDetailScreen(
                 schedules = schedules,
                 switches = current.controls.filterIsInstance<DeviceControl.Switch>(),
                 onAdd = { time, loops, dpId, turnOn -> viewModel.addSchedule(time, loops, dpId, turnOn) },
+                onUpdate = { id, time, loops, dpId, turnOn -> viewModel.updateSchedule(id, time, loops, dpId, turnOn) },
                 onToggle = { id, enabled -> viewModel.setScheduleEnabled(id, enabled) },
                 onDelete = { id -> viewModel.deleteSchedule(id) }
             )

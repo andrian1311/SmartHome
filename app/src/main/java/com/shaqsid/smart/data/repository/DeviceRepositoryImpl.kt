@@ -646,18 +646,7 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
         dpId: String,
         turnOn: Boolean
     ): Result<Unit> = suspendCancellableCoroutine { continuation ->
-        // actions JSON: {"dps":{"<dpId>":<bool>}, "time":"HH:mm"}
-        val dps = JSONObject().put(dpId, turnOn)
-        val actions = JSONObject().put("dps", dps).put("time", time).toString()
-        val builder = ThingTimerBuilder.Builder()
-            .taskName(SCHEDULE_TASK)
-            .devId(deviceId)
-            .deviceType(TimerDeviceTypeEnum.DEVICE)
-            .actions(actions)
-            .loops(loops)
-            .status(1)
-            .appPush(false)
-            .build()
+        val builder = scheduleBuilder(deviceId, time, loops, dpId, turnOn).build()
         timer.addTimer(builder, object : IResultCallback {
             override fun onSuccess() {
                 if (continuation.isActive) continuation.resume(Result.success(Unit))
@@ -669,6 +658,53 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                 }
             }
         })
+    }
+
+    override suspend fun updateSchedule(
+        deviceId: String,
+        scheduleId: String,
+        time: String,
+        loops: String,
+        dpId: String,
+        turnOn: Boolean
+    ): Result<Unit> = suspendCancellableCoroutine { continuation ->
+        // updateTimer reuses the add builder plus the existing timer id (SDK wants it as a long).
+        val timerId = scheduleId.toLongOrNull() ?: run {
+            continuation.resume(Result.failure(Exception("Invalid schedule id")))
+            return@suspendCancellableCoroutine
+        }
+        val builder = scheduleBuilder(deviceId, time, loops, dpId, turnOn).timerId(timerId).build()
+        timer.updateTimer(builder, object : IResultCallback {
+            override fun onSuccess() {
+                if (continuation.isActive) continuation.resume(Result.success(Unit))
+            }
+
+            override fun onError(code: String?, error: String?) {
+                if (continuation.isActive) {
+                    continuation.resume(Result.failure(Exception(error ?: "Failed to update schedule")))
+                }
+            }
+        })
+    }
+
+    /** Shared timer builder for add/update. Actions JSON: `{"dps":{"<dpId>":<bool>}, "time":"HH:mm"}`. */
+    private fun scheduleBuilder(
+        deviceId: String,
+        time: String,
+        loops: String,
+        dpId: String,
+        turnOn: Boolean
+    ): ThingTimerBuilder.Builder {
+        val dps = JSONObject().put(dpId, turnOn)
+        val actions = JSONObject().put("dps", dps).put("time", time).toString()
+        return ThingTimerBuilder.Builder()
+            .taskName(SCHEDULE_TASK)
+            .devId(deviceId)
+            .deviceType(TimerDeviceTypeEnum.DEVICE)
+            .actions(actions)
+            .loops(loops)
+            .status(1)
+            .appPush(false)
     }
 
     override suspend fun setScheduleEnabled(

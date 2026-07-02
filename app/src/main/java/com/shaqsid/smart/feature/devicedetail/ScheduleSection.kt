@@ -25,18 +25,34 @@ fun ScheduleSection(
     schedules: List<DeviceSchedule>,
     switches: List<DeviceControl.Switch>,
     onAdd: (time: String, loops: String, dpId: String, turnOn: Boolean) -> Unit,
+    onUpdate: (id: String, time: String, loops: String, dpId: String, turnOn: Boolean) -> Unit,
     onToggle: (id: String, enabled: Boolean) -> Unit,
     onDelete: (id: String) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    // The schedule currently being edited, or null when not editing.
+    var editing by remember { mutableStateOf<DeviceSchedule?>(null) }
 
     if (showAddDialog && switches.isNotEmpty()) {
-        AddScheduleDialog(
+        ScheduleDialog(
             switches = switches,
+            existing = null,
             onDismiss = { showAddDialog = false },
             onConfirm = { time, loops, dpId, turnOn ->
                 onAdd(time, loops, dpId, turnOn)
                 showAddDialog = false
+            }
+        )
+    }
+
+    editing?.let { schedule ->
+        ScheduleDialog(
+            switches = switches,
+            existing = schedule,
+            onDismiss = { editing = null },
+            onConfirm = { time, loops, dpId, turnOn ->
+                onUpdate(schedule.id, time, loops, dpId, turnOn)
+                editing = null
             }
         )
     }
@@ -70,6 +86,7 @@ fun ScheduleSection(
             ScheduleRow(
                 schedule = schedule,
                 switchName = switches.firstOrNull { it.dpId == schedule.dpId }?.name ?: "Switch ${schedule.dpId}",
+                onEdit = { editing = schedule },
                 onToggle = { onToggle(schedule.id, it) },
                 onDelete = { onDelete(schedule.id) }
             )
@@ -78,14 +95,16 @@ fun ScheduleSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScheduleRow(
     schedule: DeviceSchedule,
     switchName: String,
+    onEdit: () -> Unit,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -108,20 +127,28 @@ private fun ScheduleRow(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun AddScheduleDialog(
+private fun ScheduleDialog(
     switches: List<DeviceControl.Switch>,
+    existing: DeviceSchedule?,
     onDismiss: () -> Unit,
     onConfirm: (time: String, loops: String, dpId: String, turnOn: Boolean) -> Unit
 ) {
-    val timeState = rememberTimePickerState(initialHour = 18, initialMinute = 0, is24Hour = true)
-    val days = remember { mutableStateListOf(false, false, false, false, false, false, false) }
-    var selectedSwitch by remember { mutableStateOf(switches.first()) }
-    var turnOn by remember { mutableStateOf(true) }
+    // Prefill from the schedule being edited, or sensible defaults when adding.
+    val initialHour = existing?.time?.substringBefore(":")?.toIntOrNull() ?: 18
+    val initialMinute = existing?.time?.substringAfter(":")?.toIntOrNull() ?: 0
+    val timeState = rememberTimePickerState(initialHour = initialHour, initialMinute = initialMinute, is24Hour = true)
+    val days = remember {
+        mutableStateListOf(*(0 until 7).map { existing?.loops?.getOrNull(it) == '1' }.toTypedArray())
+    }
+    var selectedSwitch by remember {
+        mutableStateOf(switches.firstOrNull { it.dpId == existing?.dpId } ?: switches.first())
+    }
+    var turnOn by remember { mutableStateOf(existing?.turnOn ?: true) }
     var switchMenuOpen by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Schedule") },
+        title = { Text(if (existing == null) "Add Schedule" else "Edit Schedule") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -180,7 +207,7 @@ private fun AddScheduleDialog(
                 val time = "%02d:%02d".format(timeState.hour, timeState.minute)
                 val loops = days.joinToString("") { if (it) "1" else "0" }
                 onConfirm(time, loops, selectedSwitch.dpId, turnOn)
-            }) { Text("Add") }
+            }) { Text(if (existing == null) "Add" else "Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
