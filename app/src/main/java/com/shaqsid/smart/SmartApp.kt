@@ -2,6 +2,7 @@ package com.shaqsid.smart
 
 import android.app.Application
 import android.util.Log
+import com.facebook.drawee.backends.pipeline.Fresco
 import com.thingclips.smart.home.sdk.ThingHomeSdk
 
 class SmartApp : Application() {
@@ -12,6 +13,14 @@ class SmartApp : Application() {
         container = AppContainer(this)
 
         installTuyaTrialCrashGuard()
+
+        // The IPC camera view (ThingCameraView -> DecryptImageView -> Fresco SimpleDraweeView)
+        // requires Fresco to be initialized first, otherwise it crashes with
+        // "SimpleDraweeView was not initialized!". We force Fresco >= 3.6.0 for 16 KB
+        // compatibility, which drops the SDK's bundled auto-init, so init it explicitly here.
+        if (!Fresco.hasBeenInitialized()) {
+            Fresco.initialize(this)
+        }
 
         // Initialize the Tuya / Thing Smart SDK. The appKey/appSecret are also declared as
         // <meta-data> in AndroidManifest.xml because some SDK components read them from there.
