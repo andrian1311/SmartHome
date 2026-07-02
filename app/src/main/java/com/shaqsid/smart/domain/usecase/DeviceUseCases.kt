@@ -20,6 +20,10 @@ class GetDevicesUseCase(private val repository: DeviceRepository) {
     }
 }
 
+class IsDevicesLoadingUseCase(private val repository: DeviceRepository) {
+    operator fun invoke(): Flow<Boolean> = repository.isLoading()
+}
+
 class GetDeviceUseCase(private val repository: DeviceRepository) {
     operator fun invoke(id: String): Flow<SmartDevice?> {
         return repository.getDevice(id)
@@ -91,6 +95,7 @@ data class DeviceUseCases(
     val initialize: InitializeDevicesUseCase,
     val clearSession: ClearDeviceSessionUseCase,
     val getDevices: GetDevicesUseCase,
+    val isLoading: IsDevicesLoadingUseCase,
     val getDevice: GetDeviceUseCase,
     val addDevice: AddDeviceUseCase,
     val addDeviceByQrCode: AddDeviceByQrCodeUseCase,

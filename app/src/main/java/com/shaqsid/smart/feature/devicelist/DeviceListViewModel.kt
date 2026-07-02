@@ -25,6 +25,13 @@ class DeviceListViewModel(
             initialValue = emptyList()
         )
 
+    val isLoading: StateFlow<Boolean> = deviceUseCases.isLoading()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
     // One-shot messages (errors / confirmations) surfaced to the UI as a snackbar.
     private val _messages = MutableSharedFlow<String>()
     val messages: SharedFlow<String> = _messages.asSharedFlow()

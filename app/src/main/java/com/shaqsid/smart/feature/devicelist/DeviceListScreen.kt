@@ -25,6 +25,7 @@ fun DeviceListScreen(
     onLoggedOut: () -> Unit
 ) {
     val devices by viewModel.devices.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     var deviceToRename by remember { mutableStateOf<SmartDevice?>(null) }
     var deviceToDelete by remember { mutableStateOf<SmartDevice?>(null) }
     var newDeviceName by remember { mutableStateOf("") }
@@ -113,7 +114,11 @@ fun DeviceListScreen(
             }
         }
     ) { padding ->
-        if (devices.isEmpty()) {
+        if (isLoading && devices.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (devices.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("No devices found. Add a new device.")
             }

@@ -40,6 +40,7 @@ import kotlin.coroutines.resume
 class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
 
     private val devicesFlow = MutableStateFlow<List<SmartDevice>>(emptyList())
+    private val loadingFlow = MutableStateFlow(false)
     private var currentHomeId: Long = 0L
     private val TAG = "DeviceRepositoryImpl"
 
@@ -51,6 +52,7 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
             clearSession()
             return
         }
+        loadingFlow.value = true
         // Already set up for this session: just pull the latest device state.
         if (currentHomeId != 0L) {
             refreshDevices()
@@ -61,6 +63,7 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
 
     override fun clearSession() {
         currentHomeId = 0L
+        loadingFlow.value = false
         deviceListeners.values.forEach {
             runCatching { it.unRegisterDevListener() }
             runCatching { it.onDestroy() }
@@ -81,6 +84,7 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
 
             override fun onError(errorCode: String?, errorMsg: String?) {
                 Log.e(TAG, "Query Home List Error: $errorCode $errorMsg")
+                loadingFlow.value = false
             }
         })
     }
@@ -95,6 +99,7 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
 
                 override fun onError(errorCode: String?, errorMsg: String?) {
                     Log.e(TAG, "Create Home Error: $errorCode $errorMsg")
+                    loadingFlow.value = false
                 }
             }
         )
@@ -127,6 +132,7 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
 
             override fun onError(errorCode: String?, errorMsg: String?) {
                 Log.e(TAG, "Get Home Detail Error: $errorCode $errorMsg")
+                loadingFlow.value = false
             }
         })
     }
@@ -140,6 +146,7 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
 
             override fun onError(errorCode: String?, errorMsg: String?) {
                 Log.e(TAG, "Refresh Devices Error: $errorCode $errorMsg")
+                loadingFlow.value = false
             }
         })
     }
@@ -147,6 +154,7 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
     private fun updateDevicesFlow(tuyaDevices: List<DeviceBean>?) {
         val smartDevices = tuyaDevices?.map { it.toSmartDevice() } ?: emptyList()
         devicesFlow.value = smartDevices
+        loadingFlow.value = false
         registerDeviceListeners(smartDevices.map { it.id })
     }
 
@@ -368,6 +376,8 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
     }
 
     override fun getDevices(): Flow<List<SmartDevice>> = devicesFlow
+
+    override fun isLoading(): Flow<Boolean> = loadingFlow
 
     override fun getDevice(id: String): Flow<SmartDevice?> =
         devicesFlow.map { devices -> devices.find { it.id == id } }

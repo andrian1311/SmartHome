@@ -13,6 +13,10 @@ interface DeviceRepository {
     fun clearSession()
 
     fun getDevices(): Flow<List<SmartDevice>>
+
+    /** True while the home/device list is being fetched from Tuya. */
+    fun isLoading(): Flow<Boolean>
+
     fun getDevice(id: String): Flow<SmartDevice?>
     /** Pairs a Wi-Fi device using EZ (SmartConfig) or AP (hotspot) mode. */
     suspend fun addDevice(ssid: String, password: String, mode: PairingMode): Result<Unit>
