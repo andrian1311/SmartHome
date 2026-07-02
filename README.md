@@ -21,7 +21,9 @@ committed. Provide them locally as follows.
 
 ### CI (GitHub Actions)
 The workflow in [`.github/workflows/android.yml`](.github/workflows/android.yml) builds on every
-push/PR. Add these **repository secrets** (Settings → Secrets and variables → Actions):
+push/PR. On pushes to `main` (and manual runs) it also publishes the APK to **GitHub Releases**,
+named `SmartHome-<DDMMYYYY><Nth build that day>.apk` (e.g. `SmartHome-030720261.apk`). Add these
+**repository secrets** (Settings → Secrets and variables → Actions):
 
 | Secret | Value |
 |---|---|

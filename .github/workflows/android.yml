@@ -7,6 +7,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Needed for the release step to create tags/releases with the built-in GITHUB_TOKEN.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -54,3 +58,21 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Publish GitHub Release
+        # Only on real builds (push to main / manual run), never on pull requests.
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Name: SmartHome-<DDMMYYYY><Nth build that day>.apk, e.g. SmartHome-030720261.apk.
+          # Date is in Asia/Jakarta so it matches the local calendar day.
+          DATE=$(TZ=Asia/Jakarta date +%d%m%Y)
+          COUNT=$(gh release list --limit 200 | grep -c "SmartHome-${DATE}" || true)
+          N=$((COUNT + 1))
+          NAME="SmartHome-${DATE}${N}"
+          APK="app/build/outputs/apk/debug/${NAME}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          gh release create "$NAME" "$APK" \
+            --title "$NAME" \
+            --notes "Automated debug build: $NAME (commit ${GITHUB_SHA::7})"
