@@ -54,6 +54,25 @@ android {
         }
     }
 
+    signingConfigs {
+        // Sign debug builds with an explicit keystore so local and CI builds share one signature
+        // (APKs upgrade in place). Relying on the default ~/.android/debug.keystore is unreliable
+        // on CI, where the plugin resolves a different location and generates a throwaway key.
+        // Path comes from DEBUG_KEYSTORE_PATH (set in CI); locally it falls back to the standard
+        // debug keystore, whose SHA-256 is the one registered on the Tuya platform.
+        getByName("debug") {
+            val keystorePath = secret("DEBUG_KEYSTORE_PATH")
+                .ifBlank { "${System.getProperty("user.home")}/.android/debug.keystore" }
+            val keystoreFile = file(keystorePath)
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
