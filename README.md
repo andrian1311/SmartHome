@@ -30,6 +30,7 @@ named `SmartHome-<DDMMYYYY><Nth build that day>.apk` (e.g. `SmartHome-030720261.
 | `THING_APP_KEY` | Tuya appKey |
 | `THING_APP_SECRET` | Tuya appSecret |
 | `THING_SECURITY_AAR_PASSPHRASE` | passphrase used to encrypt the committed `.aar.enc` |
+| `DEBUG_KEYSTORE_BASE64` | base64 of your `~/.android/debug.keystore` — makes every CI build sign with the same key (so APKs upgrade in place and the signing SHA-256 matches the one registered on Tuya) |
 
 The `.aar` is too large for a GitHub secret (48 KB limit), so an **AES-256 encrypted copy**
 (`app/libs/security-algorithm-1.0.0-beta.aar.enc`) is committed and decrypted in CI with the
