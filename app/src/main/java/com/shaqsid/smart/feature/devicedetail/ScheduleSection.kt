@@ -1,6 +1,8 @@
 package com.shaqsid.smart.feature.devicedetail
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -159,7 +161,12 @@ private fun ScheduleDialog(
 
                 Text("Repeat", style = MaterialTheme.typography.labelLarge, modifier = Modifier.align(Alignment.Start))
                 Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     DAY_LABELS.forEachIndexed { i, label ->
                         FilterChip(
                             selected = days[i],
