@@ -169,7 +169,8 @@ fun DeviceDetailScreen(
                             onToggle = { on -> viewModel.toggleSwitch(control, on) },
                             onSetCountdown = { seconds ->
                                 control.countdownDpId?.let { viewModel.setCountdown(it, seconds) }
-                            }
+                            },
+                            onRename = { name -> viewModel.renameControl(control.dpId, name) }
                         )
                     } else {
                         ControlCard(

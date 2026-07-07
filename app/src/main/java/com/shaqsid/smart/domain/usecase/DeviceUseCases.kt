@@ -60,6 +60,12 @@ class RenameDeviceUseCase(private val repository: DeviceRepository) {
     }
 }
 
+class RenameControlUseCase(private val repository: DeviceRepository) {
+    suspend operator fun invoke(deviceId: String, dpId: String, newName: String): Result<Unit> {
+        return repository.renameControl(deviceId, dpId, newName)
+    }
+}
+
 class RemoveDeviceUseCase(private val repository: DeviceRepository) {
     suspend operator fun invoke(id: String): Result<Unit> {
         return repository.removeDevice(id)
@@ -114,6 +120,7 @@ data class DeviceUseCases(
     val publishDp: PublishDpUseCase,
     val removeDevice: RemoveDeviceUseCase,
     val renameDevice: RenameDeviceUseCase,
+    val renameControl: RenameControlUseCase,
     val getSchedules: GetSchedulesUseCase,
     val addSchedule: AddScheduleUseCase,
     val updateSchedule: UpdateScheduleUseCase,

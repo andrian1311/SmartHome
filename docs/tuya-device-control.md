@@ -70,6 +70,27 @@ Typed subinterfaces: `IBoolDp.getDisplayMessageForStatus(bool)`, `IEnumDp.getRan
 > cached it can be empty — fall back to `SchemaBean.name`, then `"DP <id>"`.
 > Project usage: `DeviceRepositoryImpl.buildDpLabels()` builds `dpId -> displayTitle`.
 
+### Per-DP custom names (renaming a switch/gang)
+The user's own name for an individual DP (e.g. one gang of a multi-switch) is stored server-side,
+**not** in the parser/schema:
+- **Read:** `DeviceBean.getDpName(): Map<String, String>` (`dpId -> custom name`). Prefer it over the
+  parser label so a renamed "Switch 1" shows the real name. See `DeviceRepositoryImpl.parseControls`.
+- **Write:** there is **no typed SDK method** for this. `IThingDevice.saveDeviceProperty` looks right
+  (it returns `onSuccess`) but does **not** touch `dpName` — verified by logcat: the name never
+  changed. The device panel BizBundle renames a DP via the **raw mobile API**, which this project
+  calls directly through the generic gateway:
+  ```kotlin
+  ThingHomeSdk.getRequestInstance().requestWithApiName(
+      "s.m.dev.dp.name.update", "1.0",
+      hashMapOf("gwId" to gwId, "devId" to devId, "dpId" to dpId, "name" to newName),
+      object : IRequestCallback { /* onSuccess(Any?) / onFailure(code, msg) */ })
+  ```
+  `gwId` = the gateway/`parentId` for a sub-device, else the `devId` itself. apiName + param names
+  come from Tuya's open-source `@tuya/tuya-panel-api` (`common/device.js` `updateDpName`). After
+  success, re-fetch home detail so the updated `dpName` propagates. See
+  `DeviceRepositoryImpl.renameControl`. (Discovery path: the base SDK ships only
+  `thing.m.device.name.update` for whole-device rename; per-DP rename lives in the panel we removed.)
+
 ---
 
 ## 3. Scheduled tasks (timers) — `ThingHomeSdk.getTimerInstance()` → `IThingCommonTimer`
@@ -235,6 +256,7 @@ Standard `ptz_control` enum → direction mapping (8-way; the odd values are dia
 | Schedules (timers) | `DeviceRepositoryImpl` schedule methods (add/**update**/enable/delete) + `domain/model/DeviceSchedule.kt` |
 | Add/edit schedule UI | `feature/devicedetail/ScheduleSection.kt` (`ScheduleDialog`; tap a row to edit) |
 | Rename device | `DeviceDetailViewModel.rename` (top-bar edit) |
+| Rename a single switch/gang | `DeviceRepositoryImpl.renameControl` (`saveDeviceProperty(dpId, name)`); names read back from `DeviceBean.getDpName()` in `parseControls`; edit icon on `SwitchControlCard` |
 | Control + schedule UI | `feature/devicedetail/*` |
 | Camera detection | `DeviceRepositoryImpl.toSmartDevice` → `SmartDevice.isCamera` (`isIPCDevice`) |
 | Camera live preview | `feature/camera/CameraController.kt` + `CameraScreen.kt` (P2P lifecycle) |

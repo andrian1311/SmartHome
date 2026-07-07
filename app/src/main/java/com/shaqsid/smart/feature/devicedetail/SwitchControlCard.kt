@@ -1,6 +1,8 @@
 package com.shaqsid.smart.feature.devicedetail
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,9 +21,11 @@ fun SwitchControlCard(
     control: DeviceControl.Switch,
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
-    onSetCountdown: (Int) -> Unit
+    onSetCountdown: (Int) -> Unit,
+    onRename: (String) -> Unit
 ) {
     var showTimerDialog by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
 
     if (showTimerDialog) {
         SetTimerDialog(
@@ -30,6 +34,17 @@ fun SwitchControlCard(
             onConfirm = {
                 onSetCountdown(it)
                 showTimerDialog = false
+            }
+        )
+    }
+
+    if (showRenameDialog) {
+        RenameSwitchDialog(
+            currentName = control.name,
+            onDismiss = { showRenameDialog = false },
+            onConfirm = {
+                onRename(it)
+                showRenameDialog = false
             }
         )
     }
@@ -44,6 +59,9 @@ fun SwitchControlCard(
                 if (control.countdownSeconds > 0) {
                     CountdownText(seconds = control.countdownSeconds, switchOn = control.on)
                 }
+            }
+            IconButton(onClick = { showRenameDialog = true }) {
+                Icon(Icons.Default.Edit, contentDescription = "Rename switch")
             }
             if (control.countdownDpId != null) {
                 TextButton(onClick = { showTimerDialog = true }, enabled = enabled) {
@@ -79,6 +97,34 @@ private fun CountdownText(seconds: Int, switchOn: Boolean) {
         text = "$prefix ${formatCountdown(remaining)}",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.primary
+    )
+}
+
+@Composable
+private fun RenameSwitchDialog(
+    currentName: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var name by remember { mutableStateOf(currentName) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename Switch") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Switch name") },
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(name.trim()) },
+                enabled = name.isNotBlank()
+            ) { Text("Rename") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 

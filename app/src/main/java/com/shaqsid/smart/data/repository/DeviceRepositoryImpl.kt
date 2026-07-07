@@ -21,6 +21,7 @@ import com.thingclips.smart.home.sdk.bean.HomeBean
 import com.thingclips.smart.home.sdk.callback.IThingGetHomeListCallback
 import com.thingclips.smart.home.sdk.callback.IThingHomeResultCallback
 import com.thingclips.smart.sdk.api.IDevListener
+import com.thingclips.smart.sdk.api.IRequestCallback
 import com.thingclips.smart.sdk.api.IResultCallback
 import com.thingclips.smart.sdk.api.IThingDevice
 import com.thingclips.smart.sdk.api.IThingSmartActivatorListener
@@ -271,7 +272,12 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
         val schemaMap = deviceBean.schemaMap
         val dps = deviceBean.dps ?: emptyMap()
         val meta = buildDpMeta(deviceBean)
-        val labels = meta.mapNotNull { (id, m) -> m.name?.let { id to it } }.toMap()
+        // Names shown to the user, most-specific first: the user's own per-DP names (set here or in
+        // the official app, stored server-side in DeviceBean.dpName) win over the schema/parser
+        // labels like "Switch 1".
+        val parserLabels = meta.mapNotNull { (id, m) -> m.name?.let { id to it } }.toMap()
+        val customNames = deviceBean.dpName.orEmpty().filterValues { it.isNotBlank() }
+        val labels = parserLabels + customNames
 
         // Some devices report no schema (e.g. freshly paired). Fall back to inferring basic
         // controls from the raw DP values so the detail screen isn't empty.
@@ -566,6 +572,37 @@ class DeviceRepositoryImpl(private val context: Context) : DeviceRepository {
                     refreshDevices()
                 }
             })
+        }
+
+    override suspend fun renameControl(deviceId: String, dpId: String, newName: String): Result<Unit> =
+        suspendCancellableCoroutine { continuation ->
+            // Per-DP names (a multi-gang switch's individual buttons) live server-side and surface in
+            // DeviceBean.dpName. There's no typed SDK method for this — the device panel renames a DP
+            // via the raw mobile API `s.m.dev.dp.name.update` {gwId, devId, dpId, name}. For a
+            // standalone device gwId == devId; for a sub-device it's the gateway (parentId).
+            val bean = runCatching { ThingHomeSdk.getDataInstance().getDeviceBean(deviceId) }.getOrNull()
+            val gwId = bean?.parentId?.takeIf { it.isNotBlank() } ?: deviceId
+            val params = hashMapOf<String, Any>(
+                "gwId" to gwId,
+                "devId" to deviceId,
+                "dpId" to dpId,
+                "name" to newName
+            )
+            ThingHomeSdk.getRequestInstance().requestWithApiName(
+                "s.m.dev.dp.name.update", "1.0", params,
+                object : IRequestCallback {
+                    override fun onSuccess(result: Any?) {
+                        if (continuation.isActive) continuation.resume(Result.success(Unit))
+                        refreshDevices()
+                    }
+
+                    override fun onFailure(code: String?, error: String?) {
+                        if (continuation.isActive) {
+                            continuation.resume(Result.failure(Exception("Failed to rename: $error")))
+                        }
+                    }
+                }
+            )
         }
 
     override suspend fun removeDevice(id: String): Result<Unit> =

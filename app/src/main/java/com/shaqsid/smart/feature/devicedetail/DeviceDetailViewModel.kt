@@ -115,6 +115,16 @@ class DeviceDetailViewModel(
         }
     }
 
+    /** Renames a single control (e.g. one gang of a multi-switch) by its DP id. */
+    fun renameControl(dpId: String, newName: String) {
+        if (newName.isBlank()) return
+        viewModelScope.launch {
+            deviceUseCases.renameControl(deviceId, dpId, newName)
+                .onSuccess { emitMessage("Switch renamed") }
+                .onFailure { emitMessage(it.message ?: "Failed to rename switch") }
+        }
+    }
+
     fun remove(onRemoved: () -> Unit) {
         viewModelScope.launch {
             deviceUseCases.removeDevice(deviceId)

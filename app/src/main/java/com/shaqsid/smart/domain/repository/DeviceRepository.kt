@@ -28,6 +28,9 @@ interface DeviceRepository {
     /** Writes an arbitrary data point (DP) value; [value] must be a Boolean, Int, or String. */
     suspend fun publishDp(deviceId: String, dpId: String, value: Any): Result<Unit>
     suspend fun renameDevice(id: String, newName: String): Result<Unit>
+
+    /** Renames a single control/data point (e.g. one gang of a multi-switch) via its DP id. */
+    suspend fun renameControl(deviceId: String, dpId: String, newName: String): Result<Unit>
     suspend fun removeDevice(id: String): Result<Unit>
 
     // --- Scheduled tasks (timers) ---
